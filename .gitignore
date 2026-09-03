@@ -1,0 +1,29 @@
+# --- Configurações locais e sensíveis ---
+.env
+
+# --- Arquivos do CodeIgniter ---
+/writable/cache/*
+!/writable/cache/index.html
+!/writable/cache/.gitkeep
+
+/writable/logs/*
+!/writable/logs/index.html
+!/writable/logs/.gitkeep
+
+/writable/session/*
+!/writable/session/index.html
+!/writable/session/.gitkeep
+
+/writable/uploads/*
+!/writable/uploads/index.html
+!/writable/uploads/.gitkeep
+
+# --- Composer / Dependências ---
+/vendor/
+
+# --- IDEs e Sistema ---
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+.DS_Store
