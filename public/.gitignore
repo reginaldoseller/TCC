@@ -1,0 +1,42 @@
+# --- Configurações Locais e Sensíveis ---
+# Ignora credenciais, senhas de banco e chaves de API
+.env
+
+# --- Arquivos Temporários e Cache do CodeIgniter 4 ---
+/writable/cache/*
+!/writable/cache/index.html
+!/writable/cache/.gitkeep
+
+/writable/debugbar/*
+!/writable/debugbar/index.html
+!/writable/debugbar/.gitkeep
+
+/writable/logs/*
+!/writable/logs/index.html
+!/writable/logs/.gitkeep
+
+/writable/session/*
+!/writable/session/index.html
+!/writable/session/.gitkeep
+
+/writable/uploads/*
+!/writable/uploads/index.html
+!/writable/uploads/.gitkeep
+
+# --- Composer / Dependências do PHP ---
+# Ignora bibliotecas baixadas via Composer
+/vendor/
+
+# --- IDEs, Editores de Código e Servidor ---
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# --- Arquivos do Sistema Operacional (Windows / macOS) ---
+Thumbs.db
+Desktop.ini
+.DS_Store

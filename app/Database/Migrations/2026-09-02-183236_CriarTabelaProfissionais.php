@@ -35,7 +35,7 @@ class CriarTabelaProfissionais extends Migration
         $this->forge->addKey('usuario_id', true);
         
         // Chave Estrangeira ligando usuario_id com a tabela de usuarios
-        $this->forge->addForeignKey('usuario_id', 'usuarios', 'id', 'CASCADE', 'CASCADE');
+        $this->forge->addForeignKey('usuario_id', 'usuario', 'id', 'CASCADE', 'CASCADE');
         
         $this->forge->createTable('profissional');
     }

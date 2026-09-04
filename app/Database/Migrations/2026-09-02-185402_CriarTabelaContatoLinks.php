@@ -33,7 +33,7 @@ class CriarTabelaContatoLinks extends Migration
         $this->forge->addKey('id', true);
 
         // Chave estrangeira ligando ao usuario_id
-        $this->forge->addForeignKey('usuario_id', 'usuarios', 'id', 'CASCADE', 'CASCADE');
+        $this->forge->addForeignKey('usuario_id', 'usuario', 'id', 'CASCADE', 'CASCADE');
 
         $this->forge->createTable('contato_links');
     }
