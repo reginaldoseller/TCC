@@ -18,7 +18,7 @@ class ProfissionalModel extends Model
         'raio_atendimento_km',
         'latitude', 
         'longitude', 
-        'ativo'
+        'status' // Atualizado de 'ativo' para 'status' (ENUM: 'em_analise', 'ativo', 'inativo', 'rejeitado')
     ];
 
     protected $useTimestamps    = false;

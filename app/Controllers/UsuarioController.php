@@ -78,11 +78,12 @@ class UsuarioController extends BaseController
             'nome'   => $this->request->getPost('nome'),
             'cpf'    => $cpfLimpo,
             'email'  => $this->request->getPost('email'),
-            'senha'  => $this->request->getPost('senha'), 
+            'senha'  => $this->request->getPost('senha'),
             'cidade' => $this->request->getPost('cidade'),
             'estado' => strtoupper($this->request->getPost('estado')),
             'bairro' => $this->request->getPost('bairro'),
             'cep'    => $cepLimpo,
+            'ativo'  => 1 // Define como ativo por padrão no cadastro
         ];
 
         if ($usuarioModel->save($dados)) {
@@ -96,6 +97,7 @@ class UsuarioController extends BaseController
                 'email'        => $dados['email'],
                 'tipo_perfil'  => 'Cliente',
                 'perfil_ativo' => 'Cliente',
+                'is_admin'     => false,
                 'logged_in'    => true,
             ]);
 
@@ -106,6 +108,7 @@ class UsuarioController extends BaseController
         }
     }
 
+    // Processa a validação de e-mail e senha no Login
     // Processa a validação de e-mail e senha no Login
     public function autenticar()
     {
@@ -120,27 +123,60 @@ class UsuarioController extends BaseController
             $pepper = env('security.passwordPepper', '');
             if (password_verify($senha . $pepper, $usuario['senha'])) {
 
-                // Checa no banco de dados se esse usuário possui registro na tabela profissional
+                // 1. CHECAGEM DE SEGURANÇA: Verifica se a conta do usuário está suspensa/bloqueada
+                if (isset($usuario['ativo']) && (int)$usuario['ativo'] !== 1) {
+                    return redirect()->back()->withInput()->with('erro', 'Sua conta está suspensa. Entre em contato com a administração.');
+                }
+
                 $db = \Config\Database::connect();
-                $ehProfissional = $db->table('profissional')
+
+                // Busca as informações do perfil profissional (usuario_id)
+                $dadosProfissional = $db->table('profissional')
+                    ->where('usuario_id', $usuario['id'])
+                    ->get()
+                    ->getRowArray();
+
+                $ehProfissional = !empty($dadosProfissional);
+
+                // Checa se o perfil profissional está aprovado ('ativo')
+                $profissionalAprovado = $ehProfissional && isset($dadosProfissional['status']) && $dadosProfissional['status'] === 'ativo';
+
+                // Checa se possui perfil de administrador (usuario_id)
+                $ehAdmin = $db->table('administrador')
                     ->where('usuario_id', $usuario['id'])
                     ->countAllResults() > 0;
 
-                $tipoPerfil = $ehProfissional ? 'Profissional' : 'Cliente';
+                // Define o tipo de perfil inicial para navegação
+                $tipoPerfil = 'Cliente';
+                if ($ehAdmin) {
+                    $tipoPerfil = 'Administrador';
+                } elseif ($profissionalAprovado) {
+                    $tipoPerfil = 'Profissional';
+                }
 
-                // Preenche a Session com as informações corretas
+                // Preenche a Session com as informações completas
                 session()->set([
                     'id'           => $usuario['id'],
                     'nome'         => $usuario['nome'],
                     'email'        => $usuario['email'],
                     'logged_in'    => true,
                     'tipo_perfil'  => $tipoPerfil,
-                    'perfil_ativo' => $tipoPerfil
+                    'perfil_ativo' => $tipoPerfil, // Entra como Administrador se for admin
+                    'is_admin'     => $ehAdmin
                 ]);
 
-                // Redireciona para o painel correspondente ao perfil detectado
-                if ($ehProfissional) {
+                // Redirecionamentos de acordo com o perfil ativado no login
+                if ($ehAdmin) {
+                    return redirect()->to('admin/dashboard')->with('sucesso', 'Login administrativo realizado com sucesso!');
+                }
+
+                if ($profissionalAprovado) {
                     return redirect()->to('profissional/dashboard')->with('sucesso', 'Login realizado com sucesso!');
+                }
+
+                // Se o usuário tem cadastro de profissional mas o status NÃO é 'ativo' (ex: 'em_analise')
+                if ($ehProfissional && !$profissionalAprovado) {
+                    return redirect()->to('cliente/dashboard')->with('aviso', 'Seu perfil profissional está em análise pela administração. Você navegará como cliente até a aprovação.');
                 }
 
                 return redirect()->to('cliente/dashboard')->with('sucesso', 'Login realizado com sucesso!');
@@ -169,6 +205,7 @@ class UsuarioController extends BaseController
     }
 
     // Alterna o modo ativo de visualização para Cliente
+    // Alterna o modo ativo de visualização para Cliente
     public function mudarParaCliente()
     {
         session()->set('perfil_ativo', 'Cliente');
@@ -178,16 +215,48 @@ class UsuarioController extends BaseController
     // Alterna o modo ativo de visualização para Profissional
     public function mudarParaProfissional()
     {
-        $db = \Config\Database::connect();
-        $ehProfissional = $db->table('profissional')
-            ->where('usuario_id', session()->get('id'))
-            ->countAllResults() > 0;
+        $usuarioId = session()->get('id');
+        $isAdmin   = session()->get('is_admin');
 
-        if (!$ehProfissional) {
-            return redirect()->to('profissional/ativar-perfil')->with('erro', 'Você precisa ativar seu perfil profissional primeiro.');
+        if ($isAdmin) {
+            session()->set('perfil_ativo', 'Profissional');
+            return redirect()->to('profissional/dashboard');
         }
 
-        session()->set('perfil_ativo', 'Profissional');
-        return redirect()->to('profissional/dashboard');
+        // 2. Consulta o cadastro na tabela 'profissional' usando a coluna usuario_id
+        $db = \Config\Database::connect();
+        $profissional = $db->table('profissional')
+            ->where('usuario_id', $usuarioId)
+            ->get()
+            ->getRowArray();
+
+        // 3. Se não tiver registro algum, envia para preencher o cadastro
+        if (empty($profissional)) {
+            return redirect()->to('profissional/ativar-perfil')->with('aviso', 'Preencha seus dados para se cadastrar como profissional.');
+        }
+
+        // 4. Se o cadastro existir mas estiver 'em_analise', envia mensagem ao usuário
+        if ($profissional['status'] === 'em_analise') {
+            return redirect()->back()->with('aviso', 'Sua solicitação de perfil profissional ainda está em análise pelo administrador.');
+        }
+
+        // 5. Se estiver 'ativo', atualiza a sessão e abre o painel
+        if ($profissional['status'] === 'ativo') {
+            session()->set('perfil_ativo', 'Profissional');
+            return redirect()->to('profissional/dashboard');
+        }
+
+        return redirect()->to('cliente/dashboard');
+    }
+
+    // Alterna o modo ativo de visualização para Administrador
+    public function mudarParaAdmin()
+    {
+        if (!session()->get('is_admin')) {
+            return redirect()->to('cliente/dashboard')->with('erro', 'Você não possui permissão de administrador.');
+        }
+
+        session()->set('perfil_ativo', 'Administrador');
+        return redirect()->to('admin/dashboard');
     }
 }

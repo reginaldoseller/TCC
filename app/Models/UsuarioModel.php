@@ -19,7 +19,8 @@ class UsuarioModel extends Model
         'cidade', 
         'estado', 
         'bairro', 
-        'cep'
+        'cep',
+        'ativo' // Adicionado para permitir o gerenciamento do status do usuário
     ];
 
     protected $useTimestamps = false;
