@@ -9,31 +9,43 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <style>
         body {
-            background-color: #f4f6f9;
+            background-color: #f8f9fa;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
         }
 
         .navbar-custom {
-            background-color: #4a4a4a;
+            background-color: #343a40;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
         }
 
         .card-dash {
             border: none;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-            transition: transform 0.2s ease;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
         .card-dash:hover {
             transform: translateY(-3px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        /* Destaque em tom ocre suave */
+        .border-ocre {
+            border-left: 4px solid #d9a74a !important;
+        }
+
+        .bg-ocre-soft {
+            background-color: #fdfaf3;
+            color: #8c6b23;
         }
 
         .footer-custom {
             margin-top: auto;
-            background-color: #fbf9f5;
-            border-top: 1px solid #eae5d9;
+            background-color: #ffffff;
+            border-top: 1px solid #e9ecef;
         }
     </style>
 </head>
@@ -41,28 +53,45 @@
 <body>
 
     <?php
-    // Identifica o perfil de visualização ativo e o status geral do perfil
-    $perfilAtivo  = session()->get('perfil_ativo') ?? 'Cliente';
-    $tipoPerfil   = session()->get('tipo_perfil') ?? 'Cliente';
+    // Identifica o perfil de visualização ativo e consulta o status na tabela 'profissional'
+    $perfilAtivo = session()->get('perfil_ativo') ?? 'Cliente';
+    $usuarioId   = session()->get('id');
+    $isAdmin     = (bool) session()->get('is_admin');
+
+    $db = \Config\Database::connect();
+    $dadosProfissional = $db->table('profissional')
+        ->where('usuario_id', $usuarioId)
+        ->get()
+        ->getRowArray();
+
+    // Validação estrita de status
+    $temCadastroProfissional = !empty($dadosProfissional);
+    $statusProfissional      = $temCadastroProfissional ? ($dadosProfissional['status'] ?? '') : '';
+
+    // Considera profissional ativo se o cadastro no banco estiver 'ativo' OU se for Administrador do sistema
+    $ehProfissionalAtivo     = ($temCadastroProfissional && $statusProfissional === 'ativo') || $isAdmin;
+    $ehProfissionalEmAnalise = $temCadastroProfissional && ($statusProfissional === 'em_analise');
     ?>
 
     <!-- Navbar Principal -->
-    <!-- Navbar Principal com alinhamento centralizado -->
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom px-4">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="#">GetNinjas</a>
+            <a class="navbar-brand fw-bold" href="#">
+                <i class="bi bi-person-workspace me-1"></i> GetNinjas
+            </a>
 
             <div class="d-flex align-items-center gap-3">
-                <span class="text-white">
+                <span class="text-white small">
                     <i class="bi bi-person-circle me-1"></i> <?= session()->get('nome') ?? 'Usuário' ?>
                 </span>
 
                 <!-- Badge do Perfil Ativo -->
-                <span class="badge <?= ($perfilAtivo ?? 'Cliente') === 'Profissional' ? 'bg-primary' : 'bg-info text-dark' ?>">
-                    <?= $perfilAtivo ?? 'Cliente' ?>
+                <span class="badge rounded-pill bg-light text-dark fw-normal">
+                    Perfil: <strong><?= $perfilAtivo ?></strong>
                 </span>
 
-                <a href="<?= site_url('logout') ?>" class="btn btn-outline-light btn-sm">
+                <!-- Botão de Sair -->
+                <a href="<?= site_url('logout') ?>" class="btn btn-outline-light btn-sm ms-2">
                     <i class="bi bi-box-arrow-right"></i> Sair
                 </a>
             </div>
@@ -74,38 +103,54 @@
         <!-- Mensagens de Alerta -->
         <?php if (session()->getFlashdata('sucesso')): ?>
             <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <?= session()->getFlashdata('sucesso') ?>
+                <i class="bi bi-check-circle-fill me-2"></i><?= session()->getFlashdata('sucesso') ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php endif; ?>
+
+        <?php if (session()->getFlashdata('aviso')): ?>
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i><?= session()->getFlashdata('aviso') ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         <?php endif; ?>
 
         <?php if (session()->getFlashdata('erro')): ?>
             <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <?= session()->getFlashdata('erro') ?>
+                <i class="bi bi-x-circle-fill me-2"></i><?= session()->getFlashdata('erro') ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         <?php endif; ?>
 
-        <!-- Banner de Boas-Vindas e Status do Perfil -->
-        <div class="card card-dash bg-white p-4 mb-4">
+        <!-- Banner de Boas-Vindas e Ações de Perfil -->
+        <div class="card card-dash bg-white p-4 mb-4 border-ocre">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
                 <div>
                     <h2 class="fw-bold mb-1">Olá, <?= session()->get('nome') ?? 'Cliente' ?>!</h2>
                     <p class="text-muted mb-0">Seja bem-vindo ao seu painel principal.</p>
                 </div>
 
-                <div class="d-flex align-items-center gap-2">
-                    <div class="p-2 bg-light border rounded text-secondary">
-                        <i class="bi bi-journal-bookmark me-1"></i> Perfil: <strong><?= $perfilAtivo ?></strong>
-                    </div>
-
-                    <!-- Ações para alternar ou ativar o perfil profissional -->
-                    <?php if ($tipoPerfil === 'Profissional'): ?>
-                        <a href="<?= site_url('usuario/mudar-profissional') ?>" class="btn btn-outline-primary">
-                            <i class="bi bi-briefcase me-1"></i> Ir para Painel Profissional
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <!-- Botão para Administradores -->
+                    <?php if ($isAdmin): ?>
+                        <a href="<?= site_url('usuario/mudar-admin') ?>" class="btn btn-warning btn-sm fw-bold">
+                            <i class="bi bi-shield-lock me-1"></i> Voltar ao Painel Admin
                         </a>
+                    <?php endif; ?>
+
+                    <!-- Ações de Perfil Profissional -->
+                    <?php if ($ehProfissionalAtivo): ?>
+                        <!-- Redireciona diretamente para a Dashboard do Profissional -->
+                        <a href="<?= site_url('profissional/dashboard') ?>" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-briefcase me-1"></i> Alternar para Perfil Profissional
+                        </a>
+                    <?php elseif ($ehProfissionalEmAnalise): ?>
+                        <span class="badge bg-warning text-dark p-2 border border-warning" style="font-size: 0.85rem;">
+                            <i class="bi bi-hourglass-split me-1"></i> Perfil Profissional em Análise
+                        </span>
                     <?php else: ?>
-                        <a href="<?= site_url('profissional/ativar-perfil') ?>" class="btn btn-warning text-dark fw-semibold">
+                        <!-- Só exibe para quem NÃO possui cadastro algum de profissional e não é Admin -->
+                        <a href="<?= site_url('profissional/ativar-perfil') ?>" class="btn btn-outline-warning text-dark fw-semibold btn-sm">
                             <i class="bi bi-star me-1"></i> Quero Ser Profissional
                         </a>
                     <?php endif; ?>
@@ -119,7 +164,7 @@
             <div class="col-md-4">
                 <div class="card card-dash bg-white text-center p-4 h-100 border-start border-4 border-primary">
                     <div class="mb-3">
-                        <span class="bg-primary text-white p-3 rounded-circle d-inline-block">
+                        <span class="bg-primary-subtle text-primary p-3 rounded-circle d-inline-block">
                             <i class="bi bi-plus-lg fs-3"></i>
                         </span>
                     </div>
@@ -135,8 +180,8 @@
             <div class="col-md-4">
                 <div class="card card-dash bg-white text-center p-4 h-100 border-start border-4 border-warning">
                     <div class="mb-3">
-                        <span class="bg-warning text-white p-3 rounded-circle d-inline-block">
-                            <i class="bi bi-arrow-counterclockwise fs-3"></i>
+                        <span class="bg-warning-subtle text-warning p-3 rounded-circle d-inline-block">
+                            <i class="bi bi-clock-history fs-3"></i>
                         </span>
                     </div>
                     <h5 class="fw-bold">Orçamentos em Aberto</h5>
@@ -151,8 +196,8 @@
             <div class="col-md-4">
                 <div class="card card-dash bg-white text-center p-4 h-100 border-start border-4 border-success">
                     <div class="mb-3">
-                        <span class="bg-success text-white p-3 rounded-circle d-inline-block">
-                            <i class="bi bi-list-check fs-3"></i>
+                        <span class="bg-success-subtle text-success p-3 rounded-circle d-inline-block">
+                            <i class="bi bi-check2-circle fs-3"></i>
                         </span>
                     </div>
                     <h5 class="fw-bold">Serviços Concluídos</h5>

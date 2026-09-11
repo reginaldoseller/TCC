@@ -124,7 +124,7 @@ class ProfissionalController extends BaseController
         $db = \Config\Database::connect();
         $db->transStart();
 
-        // Insere o Usuário
+        // Insere o Usuário com acesso geral liberado (ativo = 1)
         $usuarioModel = new UsuarioModel();
         
         $dadosUsuario = [
@@ -137,18 +137,19 @@ class ProfissionalController extends BaseController
             'bairro'      => $this->request->getPost('bairro'),
             'cidade'      => $this->request->getPost('cidade'),
             'estado'      => strtoupper($this->request->getPost('estado')),
-            'tipo_perfil' => 'Profissional'
+            'tipo_perfil' => 'Profissional',
+            'ativo'       => 1
         ];
 
         $usuarioId = $usuarioModel->insert($dadosUsuario);
 
-        // Insere os Dados Profissionais
+        // Insere os Dados Profissionais com status 'em_analise' para aprovação do admin
         $profissionalModel = new ProfissionalModel();
         $dadosProfissional = [
             'usuario_id'          => $usuarioId,
             'descricaoPerfil'     => $this->request->getPost('descricaoPerfil'),
             'raio_atendimento_km' => $this->request->getPost('raio_atendimento_km'),
-            'ativo'               => 1
+            'status'              => 'em_analise'
         ];
         $profissionalModel->insert($dadosProfissional);
 
@@ -179,7 +180,7 @@ class ProfissionalController extends BaseController
             'logged_in'    => true
         ]);
 
-        return redirect()->to('profissional/dashboard')->with('sucesso', 'Cadastro realizado com sucesso! Bem-vindo ao GetNinjas.');
+        return redirect()->to('profissional/dashboard')->with('sucesso', 'Cadastro realizado! Seu perfil profissional está em análise pela administração.');
     }
 
     /**
@@ -242,11 +243,12 @@ class ProfissionalController extends BaseController
 
         $profissionalModel = new ProfissionalModel();
 
+        // Salva os dados do perfil marcando o status como 'em_analise'
         $dados = [
             'usuario_id'          => $usuarioId,
             'descricaoPerfil'     => $descricaoPerfil,
             'raio_atendimento_km' => $raioAtendimentoKm,
-            'ativo'               => 1
+            'status'              => 'em_analise'
         ];
 
         if ($profissionalModel->find($usuarioId)) {
@@ -270,7 +272,7 @@ class ProfissionalController extends BaseController
         session()->set('tipo_perfil', 'Profissional');
         session()->set('perfil_ativo', 'Profissional');
 
-        return redirect()->to('profissional/dashboard')->with('sucesso', 'Parabéns! Seu perfil profissional foi ativado com sucesso.');
+        return redirect()->to('profissional/dashboard')->with('sucesso', 'Solicitação enviada! Seu perfil profissional está em análise pela administração.');
     }
 
     /**

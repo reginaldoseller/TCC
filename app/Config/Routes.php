@@ -4,6 +4,7 @@ use CodeIgniter\Router\RouteCollection;
 use App\Controllers\Home;
 use App\Controllers\UsuarioController;
 use App\Controllers\ProfissionalController;
+use App\Controllers\AdminController;
 
 /**
  * @var RouteCollection $routes
@@ -39,4 +40,22 @@ $routes->get('profissional/dashboard', [ProfissionalController::class, 'dashboar
 
 // Rotas para alternar visualização do perfil ativo
 $routes->get('usuario/mudar-cliente', [UsuarioController::class, 'mudarParaCliente']);
+$routes->get('usuario/mudarParaCliente', [UsuarioController::class, 'mudarParaCliente']); // Alias
+
 $routes->get('usuario/mudar-profissional', [UsuarioController::class, 'mudarParaProfissional']);
+$routes->get('usuario/mudarParaProfissional', [UsuarioController::class, 'mudarParaProfissional']); // Alias
+
+$routes->get('usuario/mudar-admin', [UsuarioController::class, 'mudarParaAdmin']);
+$routes->get('usuario/mudarParaAdmin', [UsuarioController::class, 'mudarParaAdmin']); // Alias
+
+// --- Rotas Administrativas ---
+$routes->group('admin', static function ($routes) {
+    $routes->get('dashboard', [AdminController::class, 'dashboard']);
+    
+    // Gestão de Profissionais (Sintaxe para parâmetros com Controller)
+    $routes->get('profissional/aprovar/(:num)', 'AdminController::aprovarProfissional/$1');
+    $routes->get('profissional/rejeitar/(:num)', 'AdminController::rejeitarProfissional/$1');
+
+    // Gestão de Categorias
+    $routes->post('categoria/criar', [AdminController::class, 'criarCategoria']);
+});
