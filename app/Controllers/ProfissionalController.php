@@ -124,7 +124,6 @@ class ProfissionalController extends BaseController
         $db = \Config\Database::connect();
         $db->transStart();
 
-        // Insere o Usuário com acesso geral liberado (ativo = 1)
         $usuarioModel = new UsuarioModel();
         
         $dadosUsuario = [
@@ -132,7 +131,7 @@ class ProfissionalController extends BaseController
             'cpf'         => $this->request->getPost('cpf'),
             'email'       => $this->request->getPost('email'),
             'telefone'    => $this->request->getPost('telefone'),
-            'senha'       => $this->request->getPost('senha'),
+            'senha'       => password_hash($this->request->getPost('senha'), PASSWORD_DEFAULT),
             'cep'         => $this->request->getPost('cep'),
             'bairro'      => $this->request->getPost('bairro'),
             'cidade'      => $this->request->getPost('cidade'),
@@ -176,11 +175,11 @@ class ProfissionalController extends BaseController
             'nome'         => $dadosUsuario['nome'],
             'email'        => $dadosUsuario['email'],
             'tipo_perfil'  => 'Profissional',
-            'perfil_ativo' => 'Profissional',
+            'perfil_ativo' => 'Cliente', // Mantém perfil ativo inicial como Cliente até a aprovação do Admin
             'logged_in'    => true
         ]);
 
-        return redirect()->to('profissional/dashboard')->with('sucesso', 'Cadastro realizado! Seu perfil profissional está em análise pela administração.');
+        return redirect()->to('cliente/dashboard')->with('sucesso', 'Cadastro realizado com sucesso! Seu perfil profissional está em análise pela administração.');
     }
 
     /**
@@ -237,13 +236,16 @@ class ProfissionalController extends BaseController
             return redirect()->back()->withInput()->with('erro', $this->validator->listErrors());
         }
 
-        $descricaoPerfil     = $this->request->getPost('descricaoPerfil');
-        $raioAtendimentoKm   = $this->request->getPost('raio_atendimento_km');
-        $categorias          = $this->request->getPost('categorias');
+        $descricaoPerfil   = $this->request->getPost('descricaoPerfil');
+        $raioAtendimentoKm = $this->request->getPost('raio_atendimento_km');
+        $categorias        = $this->request->getPost('categorias');
+
+        $db = \Config\Database::connect();
+        $db->transStart();
 
         $profissionalModel = new ProfissionalModel();
 
-        // Salva os dados do perfil marcando o status como 'em_analise'
+        // Salva/Atualiza os dados do perfil marcando o status como 'em_analise'
         $dados = [
             'usuario_id'          => $usuarioId,
             'descricaoPerfil'     => $descricaoPerfil,
@@ -258,7 +260,6 @@ class ProfissionalController extends BaseController
         }
 
         if (!empty($categorias)) {
-            $db = \Config\Database::connect();
             $db->table('profissional_categorias')->where('usuario_id', $usuarioId)->delete();
 
             foreach ($categorias as $catId) {
@@ -269,10 +270,17 @@ class ProfissionalController extends BaseController
             }
         }
 
-        session()->set('tipo_perfil', 'Profissional');
-        session()->set('perfil_ativo', 'Profissional');
+        $db->transComplete();
 
-        return redirect()->to('profissional/dashboard')->with('sucesso', 'Solicitação enviada! Seu perfil profissional está em análise pela administração.');
+        if ($db->transStatus() === false) {
+            return redirect()->back()->withInput()->with('erro', 'Ocorreu um erro ao processar a ativação do perfil.');
+        }
+
+        // Mantém o perfil ativo como Cliente enquanto o Admin avalia a solicitação
+        session()->set('tipo_perfil', 'Profissional');
+        session()->set('perfil_ativo', 'Cliente');
+
+        return redirect()->to('cliente/dashboard')->with('sucesso', 'Solicitação enviada! Seu perfil profissional está em análise pela administração.');
     }
 
     /**
