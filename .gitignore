@@ -6,6 +6,10 @@
 !/writable/cache/index.html
 !/writable/cache/.gitkeep
 
+/writable/debugbar/*
+!/writable/debugbar/index.html
+!/writable/debugbar/.gitkeep
+
 /writable/logs/*
 !/writable/logs/index.html
 !/writable/logs/.gitkeep
