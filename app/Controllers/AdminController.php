@@ -3,65 +3,89 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
+use App\Models\ProfissionalModel;
+use App\Models\UsuarioModel;
+use App\Models\CategoriaModel;
 
 class AdminController extends BaseController
 {
-    protected $db;
-
-    public function __construct()
-    {
-        $this->db = \Config\Database::connect();
-    }
-
     public function dashboard()
     {
-        // Busca profissionais pendentes utilizando dtCadastro
-        $profissionaisPendentes = $this->db->table('profissional p')
-            ->select('p.usuario_id as profissional_id, p.status, u.id as usuario_id, u.nome, u.email, u.dtCadastro')
-            ->join('usuario u', 'u.id = p.usuario_id')
-            ->where('p.status', 'em_analise')
-            ->get()
-            ->getResultArray();
-
-        // Busca lista completa de usuários com dtCadastro
-        $usuarios = $this->db->table('usuario')
-            ->select('id, nome, email, dtCadastro')
-            ->get()
-            ->getResultArray();
-
-        // Busca categorias
-        $categorias = $this->db->table('categorias')
-            ->select('id, categoria, categoria as nome, descricao')
-            ->get()
-            ->getResultArray();
+        $profissionalModel = new ProfissionalModel();
+        $usuarioModel      = new UsuarioModel();
+        $categoriaModel    = new CategoriaModel();
 
         $data = [
-            'profissionaisPendentes' => $profissionaisPendentes,
-            'usuarios'               => $usuarios,
-            'categorias'             => $categorias
+            'profissionaisPendentes' => $profissionalModel->getPendentes(),
+            'usuarios'               => $usuarioModel->getUsuariosDashboard(),
+            'categorias'             => $categoriaModel->getCategoriasDashboard()
         ];
 
         return view('admin/dashboard', $data);
     }
 
+    // Aprova o profissional ativando seu perfil
     public function aprovarProfissional($id)
     {
-        $this->db->table('profissional')
-            ->where('usuario_id', $id)
-            ->update(['status' => 'ativo']);
+        $profissionalModel = new ProfissionalModel();
+
+        // Limpa observações antigas e define como ativo
+        $profissionalModel->update($id, [
+            'status'           => 'ativo',
+            'observacao_admin' => null,
+            'bloqueado_ate'    => null
+        ]);
+
+        // TODO: Enviar e-mail de aprovação aqui
 
         return redirect()->to(site_url('admin/dashboard'))
             ->with('sucesso', 'Profissional aprovado com sucesso!');
     }
 
-    public function rejeitarProfissional($id)
+    // Solicita correções/ajustes de dados ao profissional
+    public function solicitarAjustes($id)
     {
-        $this->db->table('profissional')
-            ->where('usuario_id', $id)
-            ->update(['status' => 'rejeitado']);
+        $profissionalModel = new \App\Models\ProfissionalModel();
+
+        // 1. Captura o texto enviado pelo modal no campo name="observacao"
+        $observacao = $this->request->getPost('observacao');
+
+        if (empty($observacao)) {
+            return redirect()->back()->with('erro', 'É necessário preencher a orientação para o profissional.');
+        }
+
+        // 2. Monta os dados de atualização
+        $dadosAtualizacao = [
+            'status'           => 'ajustes_solicitados', // Altera de 'pendente' para 'ajustes_solicitados'
+            'observacao_admin' => $observacao,            // Grava a anotação na coluna da BD
+        ];
+
+        // 3. Executa a atualização na base de dados
+        if ($profissionalModel->update($id, $dadosAtualizacao)) {
+            return redirect()->to(site_url('admin/dashboard'))->with('sucesso', 'Solicitação de ajustes enviada com sucesso!');
+        }
+
+        return redirect()->back()->with('erro', 'Não foi possível registrar os ajustes.');
+    }
+
+    // Suspende a adesão do profissional (indisponibilidade temporária/carência)
+    public function suspenderProfissional($id)
+    {
+        // Define carência de 90 dias (ou leia do POST se for configurável)
+        $diasCarecia  = 90;
+        $bloqueadoAte = date('Y-m-d H:i:s', strtotime("+{$diasCarecia} days"));
+
+        $profissionalModel = new ProfissionalModel();
+        $profissionalModel->update($id, [
+            'status'           => 'indisponivel',
+            'observacao_admin' => null,
+            'bloqueado_ate'    => $bloqueadoAte
+        ]);
+
+        // TODO: Enviar e-mail institucional de suspensão temporária de adesões
 
         return redirect()->to(site_url('admin/dashboard'))
-            ->with('sucesso', 'Cadastro do profissional rejeitado.');
+            ->with('sucesso', 'Adesão do profissional suspensa temporariamente.');
     }
 
     public function criarCategoria()
@@ -69,8 +93,9 @@ class AdminController extends BaseController
         $nome = $this->request->getPost('nome');
 
         if (!empty($nome)) {
-            // Insere na coluna 'categoria' conforme a estrutura do banco
-            $this->db->table('categorias')->insert([
+            $categoriaModel = new CategoriaModel();
+
+            $categoriaModel->insert([
                 'categoria'  => $nome,
                 'created_at' => date('Y-m-d H:i:s')
             ]);

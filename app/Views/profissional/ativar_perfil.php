@@ -53,7 +53,7 @@
                 </div>
             <?php endif; ?>
 
-            <form action="<?= base_url('profissional/ativar') ?>" method="post" class="w3-container w3-margin-top">
+            <form action="<?= base_url('profissional/processarAtivacao') ?>" method="post" class="w3-container w3-margin-top">
                 <?= csrf_field() ?>
 
                 <div class="w3-panel w3-light-grey w3-leftbar w3-border-blue w3-padding-16 w3-margin-bottom">

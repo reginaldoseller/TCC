@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use App\Models\CategoriaModel;
 use App\Models\ProfissionalModel;
 use App\Models\UsuarioModel;
+use App\Models\ContatoLinkModel;
 
 class ProfissionalController extends BaseController
 {
@@ -21,6 +22,9 @@ class ProfissionalController extends BaseController
 
     /**
      * Processa o cadastro inicial do profissional (criação de conta + perfil)
+     */
+    /**
+     * Processa o cadastro inicial do profissional (criação de conta + perfil + telefone)
      */
     public function criar()
     {
@@ -120,30 +124,42 @@ class ProfissionalController extends BaseController
             return redirect()->back()->withInput()->with('erro', $this->validator->listErrors());
         }
 
-        // 2. Transação com o banco de dados
+        // Instancia as Models necessárias
+        $usuarioModel      = new UsuarioModel();
+        $profissionalModel = new ProfissionalModel();
+        $contatoLinkModel  = new ContatoLinkModel();
+
+        // Sanitização dos dados recebidos do formulário
+        $cpfLimpo      = preg_replace('/[^0-9]/', '', $this->request->getPost('cpf'));
+        $cepLimpo      = preg_replace('/[^0-9]/', '', $this->request->getPost('cep'));
+        $telefone      = $this->request->getPost('telefone');
+
+        // 2. Transação na Base de Dados
         $db = \Config\Database::connect();
         $db->transStart();
 
-        $usuarioModel = new UsuarioModel();
-        
+        // Insere a conta principal do Usuário
         $dadosUsuario = [
-            'nome'        => $this->request->getPost('nome'),
-            'cpf'         => $this->request->getPost('cpf'),
-            'email'       => $this->request->getPost('email'),
-            'telefone'    => $this->request->getPost('telefone'),
-            'senha'       => password_hash($this->request->getPost('senha'), PASSWORD_DEFAULT),
-            'cep'         => $this->request->getPost('cep'),
-            'bairro'      => $this->request->getPost('bairro'),
-            'cidade'      => $this->request->getPost('cidade'),
-            'estado'      => strtoupper($this->request->getPost('estado')),
-            'tipo_perfil' => 'Profissional',
-            'ativo'       => 1
+            'nome'   => $this->request->getPost('nome'),
+            'cpf'    => $cpfLimpo,
+            'email'  => $this->request->getPost('email'),
+            'senha'  => $this->request->getPost('senha'), // O Callback/Observer no UsuarioModel trata o hash seguro
+            'cep'    => $cepLimpo,
+            'bairro' => $this->request->getPost('bairro'),
+            'cidade' => $this->request->getPost('cidade'),
+            'estado' => strtoupper($this->request->getPost('estado')),
+            'ativo'  => 1
         ];
 
-        $usuarioId = $usuarioModel->insert($dadosUsuario);
+        $usuarioModel->insert($dadosUsuario);
+        $usuarioId = $usuarioModel->getInsertID();
 
-        // Insere os Dados Profissionais com status 'em_analise' para aprovação do admin
-        $profissionalModel = new ProfissionalModel();
+        // Grava o telefone na tabela 'contato_links'
+        if (!empty($telefone)) {
+            $contatoLinkModel->salvarContato($usuarioId, 'telefone', $telefone);
+        }
+
+        // Insere os dados específicos do Perfil Profissional
         $dadosProfissional = [
             'usuario_id'          => $usuarioId,
             'descricaoPerfil'     => $this->request->getPost('descricaoPerfil'),
@@ -152,16 +168,9 @@ class ProfissionalController extends BaseController
         ];
         $profissionalModel->insert($dadosProfissional);
 
-        // Vincular Categorias na Tabela Pivô
+        // Vincula as categorias selecionadas na tabela pivô
         $categorias = $this->request->getPost('categorias');
-        if (!empty($categorias)) {
-            foreach ($categorias as $catId) {
-                $db->table('profissional_categorias')->insert([
-                    'usuario_id'   => $usuarioId,
-                    'categoria_id' => $catId
-                ]);
-            }
-        }
+        $profissionalModel->salvarCategorias($usuarioId, (array) $categorias);
 
         $db->transComplete();
 
@@ -169,13 +178,13 @@ class ProfissionalController extends BaseController
             return redirect()->back()->withInput()->with('erro', 'Ocorreu um erro ao realizar o cadastro. Tente novamente.');
         }
 
-        // 3. Login Automático e Inicialização de Sessão
+        // 3. Inicialização de Sessão (Login Automático)
         session()->set([
             'id'           => $usuarioId,
             'nome'         => $dadosUsuario['nome'],
             'email'        => $dadosUsuario['email'],
             'tipo_perfil'  => 'Profissional',
-            'perfil_ativo' => 'Cliente', // Mantém perfil ativo inicial como Cliente até a aprovação do Admin
+            'perfil_ativo' => 'Cliente', // Permanece como Cliente até a aprovação do Admin
             'logged_in'    => true
         ]);
 
@@ -240,12 +249,11 @@ class ProfissionalController extends BaseController
         $raioAtendimentoKm = $this->request->getPost('raio_atendimento_km');
         $categorias        = $this->request->getPost('categorias');
 
+        $profissionalModel = new ProfissionalModel();
+
         $db = \Config\Database::connect();
         $db->transStart();
 
-        $profissionalModel = new ProfissionalModel();
-
-        // Salva/Atualiza os dados do perfil marcando o status como 'em_analise'
         $dados = [
             'usuario_id'          => $usuarioId,
             'descricaoPerfil'     => $descricaoPerfil,
@@ -259,16 +267,8 @@ class ProfissionalController extends BaseController
             $profissionalModel->insert($dados);
         }
 
-        if (!empty($categorias)) {
-            $db->table('profissional_categorias')->where('usuario_id', $usuarioId)->delete();
-
-            foreach ($categorias as $catId) {
-                $db->table('profissional_categorias')->insert([
-                    'usuario_id'   => $usuarioId,
-                    'categoria_id' => $catId
-                ]);
-            }
-        }
+        // Salva categorias usando o método da Model
+        $profissionalModel->salvarCategorias($usuarioId, (array) $categorias);
 
         $db->transComplete();
 
@@ -292,10 +292,18 @@ class ProfissionalController extends BaseController
             return redirect()->to('login')->with('erro', 'Sua sessão expirou. Faça login novamente.');
         }
 
-        if (session()->get('tipo_perfil') !== 'Profissional') {
-            return redirect()->to('profissional/ativar-perfil')->with('erro', 'Você precisa ativar seu perfil profissional para acessar este painel.');
+        $usuarioId = session()->get('id');
+
+        $profissionalModel = new ProfissionalModel();
+        $profissional = $profissionalModel->getProfissionalAtivo($usuarioId);
+
+        // Se não encontrou registro ativo, bloqueia o acesso
+        if (empty($profissional)) {
+            return redirect()->to('profissional/ativarPerfil')
+                ->with('erro', 'Você precisa ativar seu perfil profissional para acessar este painel.');
         }
 
+        // Se possui registro ativo, garante que o perfil_ativo na sessão seja Profissional
         session()->set('perfil_ativo', 'Profissional');
 
         return view('profissional/dashboard');
