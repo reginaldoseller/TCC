@@ -12,7 +12,6 @@
             background-color: #fcfbfa;
         }
 
-        /* Cor suave inspirada em tons ocre bem claros */
         .navbar-custom {
             background-color: #3d3a37 !important;
         }
@@ -65,14 +64,13 @@
             </a>
 
             <div class="d-flex align-items-center gap-3">
-                <!-- Dropdown para alternar perfil -->
                 <div class="dropdown">
                     <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
                         <i class="bi bi-person-badge me-1"></i> Alternar Perfil
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end shadow">
                         <li>
-                            <a class="dropdown-item fw-bold text-dark" href="<?= site_url('usuario/mudar-admin') ?>">
+                            <a class="dropdown-item fw-bold text-dark" href="<?= site_url('usuario/mudarParaAdmin') ?>">
                                 <i class="bi bi-shield-lock me-2 text-warning"></i>Modo Administrador
                             </a>
                         </li>
@@ -80,13 +78,12 @@
                             <hr class="dropdown-divider">
                         </li>
                         <li>
-                            <a class="dropdown-item" href="<?= site_url('usuario/mudar-cliente') ?>">
+                            <a class="dropdown-item" href="<?= site_url('usuario/mudarParaCliente') ?>">
                                 <i class="bi bi-person me-2"></i>Modo Cliente
                             </a>
                         </li>
                         <li>
-                            <!-- Rota corrigida para acionar a verificação do controller -->
-                            <a class="dropdown-item" href="<?= site_url('usuario/mudar-profissional') ?>">
+                            <a class="dropdown-item" href="<?= site_url('usuario/mudarParaProfissional') ?>">
                                 <i class="bi bi-briefcase me-2"></i>Modo Profissional
                             </a>
                         </li>
@@ -191,20 +188,56 @@
                                 </thead>
                                 <tbody>
                                     <?php foreach ($profissionaisPendentes as $prof): ?>
+                                        <?php $profId = $prof['profissional_id'] ?? $prof['id']; ?>
                                         <tr>
-                                            <td>#<?= $prof['profissional_id'] ?? $prof['id'] ?? '-' ?></td>
+                                            <td>#<?= $profId ?? '-' ?></td>
                                             <td><strong><?= $prof['nome'] ?? 'Sem nome' ?></strong></td>
                                             <td><?= $prof['email'] ?? '-' ?></td>
                                             <td><?= !empty($prof['dtCadastro']) ? date('d/m/Y H:i', strtotime($prof['dtCadastro'])) : '-' ?></td>
                                             <td class="text-end">
-                                                <a href="<?= site_url('admin/profissional/aprovar/' . ($prof['profissional_id'] ?? $prof['id'])) ?>" class="btn btn-success btn-sm">
+                                                <!-- Botão Aprovar -->
+                                                <a href="<?= site_url('admin/profissional/aprovar/' . $profId) ?>" class="btn btn-success btn-sm">
                                                     <i class="bi bi-check-lg"></i> Aprovar
                                                 </a>
-                                                <a href="<?= site_url('admin/profissional/rejeitar/' . ($prof['profissional_id'] ?? $prof['id'])) ?>" class="btn btn-danger btn-sm" onclick="return confirm('Deseja realmente rejeitar este cadastro?')">
-                                                    <i class="bi bi-x-lg"></i> Rejeitar
+
+                                                <!-- Botão Solicitar Ajustes (Abre Modal) -->
+                                                <button type="button" class="btn btn-warning btn-sm text-dark" data-bs-toggle="modal" data-bs-target="#modalAjustes<?= $profId ?>">
+                                                    <i class="bi bi-pencil-square"></i> Solicitar Ajustes
+                                                </button>
+
+                                                <!-- Botão Suspender Adesão (Sem usar termo rejeitar) -->
+                                                <a href="<?= site_url('admin/profissional/suspender/' . $profId) ?>" class="btn btn-secondary btn-sm" onclick="return confirm('Confirma a suspensão temporária da adesão deste perfil?')">
+                                                    <i class="bi bi-slash-circle"></i> Suspender
                                                 </a>
                                             </td>
                                         </tr>
+
+                                        <!-- Modal para Solicitar Ajustes de Dados -->
+                                        <div class="modal fade" id="modalAjustes<?= $profId ?>" tabindex="-1" aria-hidden="true">
+                                            <div class="modal-dialog modal-dialog-centered">
+                                                <div class="modal-content">
+                                                    <form action="<?= site_url('admin/profissional/solicitarAjustes/' . $profId) ?>" method="post">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title fw-bold">Orientação de Ajustes</h5>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                                        </div>
+                                                        <div class="modal-body text-start">
+                                                            <p class="small text-muted mb-2">
+                                                                Digite abaixo quais dados ou informações o profissional <strong><?= $prof['nome'] ?? '' ?></strong> precisa corrigir para regularizar a solicitação:
+                                                            </p>
+                                                            <div class="mb-3">
+                                                                <textarea class="form-control" name="observacao" rows="4" placeholder="Ex: A foto do documento está ilegível ou a descrição do perfil necessita de mais detalhes." required></textarea>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                                                            <button type="submit" class="btn btn-warning">Enviar Orientação</button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+
                                     <?php endforeach; ?>
                                 </tbody>
                             </table>

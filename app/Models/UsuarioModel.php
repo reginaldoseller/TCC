@@ -20,19 +20,19 @@ class UsuarioModel extends Model
         'estado', 
         'bairro', 
         'cep',
-        'ativo' // Adicionado para permitir o gerenciamento do status do usuário
+        'ativo'
     ];
 
     protected $useTimestamps = false;
 
-    // Callbacks acionados antes do insert ou update
+    // Callbacks para hash de senha
     protected $beforeInsert = ['hashPassword'];
     protected $beforeUpdate = ['hashPassword'];
+
 
     protected function hashPassword(array $data)
     {
         if (isset($data['data']['senha']) && !empty($data['data']['senha'])) {
-            // Fallback para '' caso a variável não exista no .env
             $pepper = env('security.passwordPepper', '');
             $senhaComPepper = $data['data']['senha'] . $pepper;
 
@@ -44,10 +44,49 @@ class UsuarioModel extends Model
 
             $data['data']['senha'] = password_hash($senhaComPepper, PASSWORD_ARGON2ID, $options);
         } else {
-            // Remove o índice 'senha' do array para não sobrescrever a senha antiga em updates sem alteração
             unset($data['data']['senha']);
         }
 
         return $data;
+    }
+
+   
+    /**
+     * Valida email e senha com Argon2id + Pepper
+     */
+    public function verificarCredenciais(string $email, string $senha)
+    {
+        $usuario = $this->where('email', $email)->first();
+
+        if (!$usuario) {
+            return false;
+        }
+
+        $pepper = env('security.passwordPepper', '');
+        if (password_verify($senha . $pepper, $usuario['senha'])) {
+            return $usuario;
+        }
+
+        return false;
+    }
+
+  
+    /**
+     * Verifica na tabela administrador se o usuário possui registro
+     */
+    public function ehAdmin(int $usuarioId): bool
+    {
+        $db = \Config\Database::connect();
+        return $db->table('administrador')
+                  ->where('usuario_id', $usuarioId)
+                  ->countAllResults() > 0;
+    }
+
+    /**
+     * Retorna a lista simples de usuários para a visão do administrador
+     */
+    public function getUsuariosDashboard()
+    {
+        return $this->select('id, nome, email, dtCadastro')->findAll();
     }
 }

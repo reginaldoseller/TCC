@@ -17,7 +17,7 @@
 
         .navbar-custom {
             background-color: #343a40;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
         }
 
         .card-dash {
@@ -67,10 +67,14 @@
     // Validação estrita de status
     $temCadastroProfissional = !empty($dadosProfissional);
     $statusProfissional      = $temCadastroProfissional ? ($dadosProfissional['status'] ?? '') : '';
+    $observacaoAdmin        = $temCadastroProfissional ? ($dadosProfissional['observacao_admin'] ?? '') : '';
+    $bloqueadoAte           = $temCadastroProfissional ? ($dadosProfissional['bloqueado_ate'] ?? '') : '';
 
-    // Considera profissional ativo se o cadastro no banco estiver 'ativo' OU se for Administrador do sistema
-    $ehProfissionalAtivo     = ($temCadastroProfissional && $statusProfissional === 'ativo') || $isAdmin;
-    $ehProfissionalEmAnalise = $temCadastroProfissional && ($statusProfissional === 'em_analise');
+    // Mapeamento dos cenários
+    $ehProfissionalAtivo        = ($temCadastroProfissional && $statusProfissional === 'ativo') || $isAdmin;
+    $ehProfissionalEmAnalise    = $temCadastroProfissional && ($statusProfissional === 'em_analise' || $statusProfissional === 'pendente');
+    $ehProfissionalAjustes      = $temCadastroProfissional && ($statusProfissional === 'ajustes_solicitados');
+    $ehProfissionalIndisponivel = $temCadastroProfissional && ($statusProfissional === 'indisponivel' || $statusProfissional === 'suspenso');
     ?>
 
     <!-- Navbar Principal -->
@@ -100,7 +104,7 @@
 
     <div class="container py-4">
 
-        <!-- Mensagens de Alerta -->
+        <!-- Mensagens de Alerta Flashdata -->
         <?php if (session()->getFlashdata('sucesso')): ?>
             <div class="alert alert-success alert-dismissible fade show" role="alert">
                 <i class="bi bi-check-circle-fill me-2"></i><?= session()->getFlashdata('sucesso') ?>
@@ -122,6 +126,80 @@
             </div>
         <?php endif; ?>
 
+        <!-- Alerta 1: Perfil em Análise -->
+        <?php if ($ehProfissionalEmAnalise): ?>
+            <div class="alert alert-warning alert-dismissible fade show border-start border-4 border-warning shadow-sm mb-4" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-hourglass-split fs-4"></i>
+                    <div>
+                        <strong>Perfil em Análise:</strong> Seu perfil profissional está sob análise da nossa equipe. Você pode navegar como cliente normalmente até a aprovação.
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php endif; ?>
+
+        <!-- Alerta 2: Orientação de Ajustes -->
+        <?php if ($ehProfissionalAjustes): ?>
+            <div class="alert alert-warning border-start border-4 border-warning shadow-sm mb-4" role="alert">
+                <div class="d-flex align-items-start gap-3">
+                    <i class="bi bi-pencil-square fs-3 text-warning"></i>
+                    <div class="w-100">
+                        <h5 class="alert-heading fw-bold mb-1">Ajustes Necessários no Perfil Profissional</h5>
+                        <p class="mb-2">A equipe de análise identificou inconsistências no seu cadastro que impedem a aprovação imediata.</p>
+                        <?php if (!empty($observacaoAdmin)): ?>
+                            <div class="bg-white p-3 rounded border text-dark mb-3">
+                                <strong>Orientação da Administração:</strong>
+                                <p class="mb-0 text-secondary mt-1"><?= nl2br(esc($observacaoAdmin)) ?></p>
+                            </div>
+                        <?php endif; ?>
+                        <a href="<?= site_url('profissional/editar-perfil') ?>" class="btn btn-warning btn-sm text-dark fw-bold">
+                            <i class="bi bi-pencil me-1"></i> Corrigir Dados do Perfil
+                        </a>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
+
+        <!-- Alerta 3: Perfil Profissional Indisponível (Com Detalhes Clicáveis) -->
+        <?php if ($ehProfissionalIndisponivel): ?>
+            <div class="card border-0 border-start border-4 border-secondary shadow-sm mb-4">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-3">
+                            <i class="bi bi-slash-circle fs-3 text-secondary"></i>
+                            <div>
+                                <h6 class="fw-bold mb-0 text-dark">Status da Fila: Seu Perfil Profissional está Temporariamente Indisponível</h6>
+                                <small class="text-muted">Clique em "Ver Detalhes" para entender o motivo e a previsão de reabertura de vagas.</small>
+                            </div>
+                        </div>
+
+                        <!-- Botão para Expandir/Recolher o Texto -->
+                        <button class="btn btn-outline-secondary btn-sm fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#detalhesIndisponivel" aria-expanded="false" aria-controls="detalhesIndisponivel">
+                            <i class="bi bi-chevron-down me-1"></i> Ver Detalhes
+                        </button>
+                    </div>
+
+                    <!-- Conteúdo Oculto/Expandível -->
+                    <div class="collapse mt-3" id="detalhesIndisponivel">
+                        <div class="p-3 bg-light rounded border text-secondary small">
+                            <p class="mb-2">
+                                <strong>Motivo:</strong> As adesões de novos prestadores de serviço para a sua categoria ou região geográfica foram suspensas temporariamente para equilibrar a oferta e demanda da plataforma.
+                            </p>
+                            <p class="mb-0">A navegação como <strong>Cliente</strong> para contratar serviços continua liberada sem restrições.</p>
+
+                            <?php if (!empty($bloqueadoAte)): ?>
+                                <div class="mt-2 pt-2 border-top text-dark fw-bold">
+                                    <i class="bi bi-calendar-check me-1 text-primary"></i> Previsão para reabertura de novas vagas profissionais:
+                                    <span class="badge bg-secondary"><?= date('d/m/Y', strtotime($bloqueadoAte)) ?></span>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
+
         <!-- Banner de Boas-Vindas e Ações de Perfil -->
         <div class="card card-dash bg-white p-4 mb-4 border-ocre">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
@@ -133,23 +211,29 @@
                 <div class="d-flex align-items-center gap-2 flex-wrap">
                     <!-- Botão para Administradores -->
                     <?php if ($isAdmin): ?>
-                        <a href="<?= site_url('usuario/mudar-admin') ?>" class="btn btn-warning btn-sm fw-bold">
+                        <a href="<?= site_url('usuario/mudarParaAdmin') ?>" class="btn btn-warning btn-sm fw-bold">
                             <i class="bi bi-shield-lock me-1"></i> Voltar ao Painel Admin
                         </a>
                     <?php endif; ?>
 
-                    <!-- Ações de Perfil Profissional -->
+                    <!-- Ações de Perfil Profissional conforme Status -->
                     <?php if ($ehProfissionalAtivo): ?>
-                        <!-- Redireciona diretamente para a Dashboard do Profissional -->
-                        <a href="<?= site_url('profissional/dashboard') ?>" class="btn btn-outline-secondary btn-sm">
-                            <i class="bi bi-briefcase me-1"></i> Alternar para Perfil Profissional
+                        <a href="<?= site_url('usuario/mudarParaProfissional') ?>" class="btn btn-secondary">
+                            Alternar para Perfil Profissional
                         </a>
                     <?php elseif ($ehProfissionalEmAnalise): ?>
                         <span class="badge bg-warning text-dark p-2 border border-warning" style="font-size: 0.85rem;">
                             <i class="bi bi-hourglass-split me-1"></i> Perfil Profissional em Análise
                         </span>
+                    <?php elseif ($ehProfissionalAjustes): ?>
+                        <a href="<?= site_url('profissional/editar-perfil') ?>" class="btn btn-warning text-dark fw-bold btn-sm">
+                            <i class="bi bi-pencil-square me-1"></i> Corrigir Perfil Profissional
+                        </a>
+                    <?php elseif ($ehProfissionalIndisponivel): ?>
+                        <span class="badge bg-secondary text-white p-2" style="font-size: 0.85rem;">
+                            <i class="bi bi-slash-circle me-1"></i> Adesão Temporariamente Indisponível
+                        </span>
                     <?php else: ?>
-                        <!-- Só exibe para quem NÃO possui cadastro algum de profissional e não é Admin -->
                         <a href="<?= site_url('profissional/ativar-perfil') ?>" class="btn btn-outline-warning text-dark fw-semibold btn-sm">
                             <i class="bi bi-star me-1"></i> Quero Ser Profissional
                         </a>

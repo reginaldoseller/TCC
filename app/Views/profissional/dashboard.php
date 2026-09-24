@@ -44,12 +44,12 @@
             <!-- ÁREA DOS BOTÕES DE NAVEGAÇÃO -->
             <div class="d-flex gap-2 align-items-center">
                 <?php if (session()->get('is_admin')): ?>
-                    <a href="<?= site_url('usuario/mudar-admin') ?>" class="btn btn-warning btn-sm fw-bold">
+                    <a href="<?= site_url('usuario/mudarParaAdmin') ?>" class="btn btn-warning btn-sm fw-bold">
                         <i class="bi bi-shield-lock me-1"></i> Voltar ao Painel Admin
                     </a>
                 <?php endif; ?>
 
-                <a href="<?= site_url('usuario/mudar-cliente') ?>" class="btn btn-outline-secondary btn-sm">
+                <a href="<?= site_url('usuario/mudarParaCliente') ?>" class="btn btn-outline-secondary btn-sm">
                     <i class="bi bi-person me-1"></i> Alternar para Perfil Cliente
                 </a>
 
