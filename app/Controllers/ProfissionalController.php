@@ -21,9 +21,6 @@ class ProfissionalController extends BaseController
     }
 
     /**
-     * Processa o cadastro inicial do profissional (criação de conta + perfil)
-     */
-    /**
      * Processa o cadastro inicial do profissional (criação de conta + perfil + telefone)
      */
     public function criar()
@@ -154,7 +151,7 @@ class ProfissionalController extends BaseController
         $usuarioModel->insert($dadosUsuario);
         $usuarioId = $usuarioModel->getInsertID();
 
-        // Grava o telefone na tabela 'contato_links'
+        // Grava o telefone na tabela 'contato_links' (utilizando tipoContato)
         if (!empty($telefone)) {
             $contatoLinkModel->salvarContato($usuarioId, 'telefone', $telefone);
         }
@@ -261,8 +258,10 @@ class ProfissionalController extends BaseController
             'status'              => 'em_analise'
         ];
 
-        if ($profissionalModel->find($usuarioId)) {
-            $profissionalModel->update($usuarioId, $dados);
+        $profissionalExistente = $profissionalModel->where('usuario_id', $usuarioId)->first();
+
+        if ($profissionalExistente) {
+            $profissionalModel->where('usuario_id', $usuarioId)->set($dados)->update();
         } else {
             $profissionalModel->insert($dados);
         }
@@ -307,5 +306,126 @@ class ProfissionalController extends BaseController
         session()->set('perfil_ativo', 'Profissional');
 
         return view('profissional/dashboard');
+    }
+
+    // Exibe o formulário de edição do perfil profissional
+    public function editarPerfil()
+    {
+        if (!session()->get('logged_in')) {
+            return redirect()->to('login');
+        }
+
+        $usuarioId = session()->get('id');
+        $profissionalModel = new ProfissionalModel();
+        $contatoLinkModel   = new ContatoLinkModel();
+
+        // Busca o registo de profissional ligado a este utilizador
+        $profissional = $profissionalModel->where('usuario_id', $usuarioId)->first();
+
+        // Carrega todos os links/contatos do utilizador
+        $contatosBanco = $contatoLinkModel->where('usuario_id', $usuarioId)->findAll();
+
+        $links = [];
+        foreach ($contatosBanco as $contato) {
+            // Mapeamento correto para 'tipoContato' e 'contato' (conforme estrutura do banco)
+            $tipo = is_object($contato) 
+                ? ($contato->tipoContato ?? $contato->tipo ?? null) 
+                : ($contato['tipoContato'] ?? $contato['tipo'] ?? null);
+
+            $valor = is_object($contato) 
+                ? ($contato->contato ?? $contato->link_ou_numero ?? null) 
+                : ($contato['contato'] ?? $contato['link_ou_numero'] ?? null);
+
+            if ($tipo) {
+                $links[$tipo] = $valor;
+            }
+        }
+
+        $data = [
+            'profissional' => $profissional,
+            'links'        => $links
+        ];
+
+        return view('profissional/editar_perfil', $data);
+    }
+
+    // Processa a atualização do perfil profissional e links
+    public function atualizarPerfil()
+    {
+        if (!session()->get('logged_in')) {
+            return redirect()->to('login');
+        }
+
+        $usuarioId = session()->get('id');
+        $profissionalModel = new ProfissionalModel();
+        $contatoLinkModel   = new ContatoLinkModel();
+
+        $regras = [
+            'descricao'    => 'required|min_length[10]',
+            'raio_atuacao' => 'required|integer|greater_than[0]',
+        ];
+
+        if (!$this->validate($regras)) {
+            return redirect()->back()->withInput()->with('erro', $this->validator->listErrors());
+        }
+
+        // 1. Atualiza ou cria a entrada na tabela 'profissional'
+        $profissional = $profissionalModel->where('usuario_id', $usuarioId)->first();
+
+        // Mapeia tanto nomes curtos quanto nomes padrão da tabela
+        $dadosProfissional = [
+            'usuario_id'          => $usuarioId,
+            'descricao'           => $this->request->getPost('descricao'),
+            'descricaoPerfil'     => $this->request->getPost('descricao'),
+            'raio_atuacao'        => $this->request->getPost('raio_atuacao'),
+            'raio_atendimento_km' => $this->request->getPost('raio_atuacao'),
+        ];
+
+        if ($profissional) {
+            $idProfissional = is_object($profissional)
+                ? ($profissional->id ?? $profissional->id_profissional ?? null)
+                : ($profissional['id'] ?? $profissional['id_profissional'] ?? null);
+
+            if ($idProfissional) {
+                $profissionalModel->update($idProfissional, $dadosProfissional);
+            } else {
+                $profissionalModel->where('usuario_id', $usuarioId)->set($dadosProfissional)->update();
+            }
+        } else {
+            $dadosProfissional['status'] = 'pendente';
+            $profissionalModel->insert($dadosProfissional);
+        }
+
+        // 2. Salva os links e redes sociais na 'contato_links'
+        $redes = ['whatsapp', 'instagram', 'facebook', 'linkedin', 'telefone'];
+
+        foreach ($redes as $tipo) {
+            $valor = trim((string) $this->request->getPost($tipo));
+            if (!empty($valor)) {
+                if ($tipo === 'whatsapp' || $tipo === 'telefone') {
+                    $valor = preg_replace('/[^0-9]/', '', $valor);
+                }
+                
+                // Salva via método dedicado do Model
+                if (method_exists($contatoLinkModel, 'salvarContato')) {
+                    $contatoLinkModel->salvarContato($usuarioId, $tipo, $valor);
+                } else {
+                    // Fallback para gravação direta garantindo tipoContato e contato
+                    $existe = $contatoLinkModel->where('usuario_id', $usuarioId)->where('tipoContato', $tipo)->first();
+                    if ($existe) {
+                        $contatoLinkModel->where('usuario_id', $usuarioId)->where('tipoContato', $tipo)
+                            ->set(['contato' => $valor])->update();
+                    } else {
+                        $contatoLinkModel->insert([
+                            'usuario_id'  => $usuarioId,
+                            'tipoContato' => $tipo,
+                            'contato'     => $valor
+                        ]);
+                    }
+                }
+            }
+        }
+
+        return redirect()->back()->with('sucesso', 'Perfil profissional atualizado com sucesso!');
     }
 }

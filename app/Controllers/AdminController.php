@@ -45,7 +45,7 @@ class AdminController extends BaseController
     // Solicita correções/ajustes de dados ao profissional
     public function solicitarAjustes($id)
     {
-        $profissionalModel = new \App\Models\ProfissionalModel();
+        $profissionalModel = new ProfissionalModel();
 
         // 1. Captura o texto enviado pelo modal no campo name="observacao"
         $observacao = $this->request->getPost('observacao');
@@ -56,8 +56,8 @@ class AdminController extends BaseController
 
         // 2. Monta os dados de atualização
         $dadosAtualizacao = [
-            'status'           => 'ajustes_solicitados', // Altera de 'pendente' para 'ajustes_solicitados'
-            'observacao_admin' => $observacao,            // Grava a anotação na coluna da BD
+            'status'           => 'ajustes_solicitados',
+            'observacao_admin' => $observacao,
         ];
 
         // 3. Executa a atualização na base de dados
@@ -71,9 +71,8 @@ class AdminController extends BaseController
     // Suspende a adesão do profissional (indisponibilidade temporária/carência)
     public function suspenderProfissional($id)
     {
-        // Define carência de 90 dias (ou leia do POST se for configurável)
-        $diasCarecia  = 90;
-        $bloqueadoAte = date('Y-m-d H:i:s', strtotime("+{$diasCarecia} days"));
+        $diasCarencia  = 90;
+        $bloqueadoAte = date('Y-m-d H:i:s', strtotime("+{$diasCarencia} days"));
 
         $profissionalModel = new ProfissionalModel();
         $profissionalModel->update($id, [
@@ -87,6 +86,79 @@ class AdminController extends BaseController
         return redirect()->to(site_url('admin/dashboard'))
             ->with('sucesso', 'Adesão do profissional suspensa temporariamente.');
     }
+
+    // --- MODERAÇÃO DE USUÁRIOS GERAIS ---
+
+    // Suspende a conta de um usuário temporariamente
+    public function suspenderUsuario($id)
+    {
+        
+        // Instancia o Model de Usuários
+        $usuarioModel = new \App\Models\UsuarioModel();
+
+        // 1. Verifica se o usuário existe
+        $usuario = $usuarioModel->find($id);
+        if (!$usuario) {
+            return redirect()->back()->with('erro', 'Usuário não encontrado.');
+        }
+
+        // 2. Impede a auto-suspensão
+        if ($id == session()->get('id')) {
+            return redirect()->back()->with('erro', 'Você não pode suspender sua própria conta.');
+        }
+
+        // 3. Captura os dados do formulário do Modal
+        $motivo = $this->request->getPost('motivo_bloqueio');
+        $bloqueadoAte = $this->request->getPost('bloqueado_ate');
+
+        // 4. Prepara o array com os dados para salvar
+        $dadosAtualizacao = [
+            'status'          => 'suspenso',
+            'motivo_bloqueio' => $motivo,
+            'bloqueado_ate'   => !empty($bloqueadoAte) ? $bloqueadoAte : null,
+        ];
+
+        // 5. Executa a atualização no banco de dados
+        if ($usuarioModel->update($id, $dadosAtualizacao)) {
+            return redirect()->to(site_url('admin/dashboard'))->with('sucesso', 'Usuário suspenso com sucesso.');
+        } else {
+            return redirect()->back()->with('erro', 'Falha ao atualizar o status do usuário no banco de dados.');
+        }
+    }
+
+    // Baniu/Expulsa um usuário definitivamente da plataforma
+    public function banirUsuario($id)
+    {
+        $usuarioModel = new UsuarioModel();
+
+        $motivo = $this->request->getPost('motivo');
+
+        $usuarioModel->update($id, [
+            'status'          => 'banido',
+            'motivo_bloqueio' => $motivo,
+            'bloqueado_ate'   => null
+        ]);
+
+        return redirect()->to(site_url('admin/dashboard'))
+            ->with('sucesso', 'Usuário banido permanentemente da plataforma.');
+    }
+
+    // Reativa a conta de um usuário suspenso ou banido
+    public function reativarUsuario($id)
+    {
+        $usuarioModel = new UsuarioModel();
+
+        $usuarioModel->update($id, [
+            'status'          => 'ativo',
+            'motivo_bloqueio' => null,
+            'bloqueado_ate'   => null
+        ]);
+
+        return redirect()->to(site_url('admin/dashboard'))
+            ->with('sucesso', 'Conta do usuário reativada com sucesso.');
+    }
+
+    // --- GESTÃO DE CATEGORIAS ---
 
     public function criarCategoria()
     {
@@ -107,4 +179,5 @@ class AdminController extends BaseController
         return redirect()->to(site_url('admin/dashboard'))
             ->with('erro', 'Informe o nome da categoria.');
     }
+
 }

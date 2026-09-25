@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - GetNinjas</title>
+    <title>Recuperar Senha - GetNinjas</title>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -15,13 +15,6 @@
         }
         .bg-conecta { background-color: #fcf8f2; }
         .main-content { flex: 1; }
-        .link-esqueci {
-            text-decoration: none;
-            font-size: 0.9em;
-        }
-        .link-esqueci:hover {
-            text-decoration: underline;
-        }
     </style>
 </head>
 <body>
@@ -35,13 +28,12 @@
 
     <!-- Conteúdo Principal -->
     <div class="main-content">
-        <!-- Formulário de Login -->
         <div class="w3-content w3-padding-large" style="max-width:500px; margin-top:40px;">
             
             <div class="w3-card-4 w3-white w3-round-large w3-padding-24">
                 <div class="w3-container w3-center">
-                    <h2 class="w3-bold">Acessar sua Conta</h2>
-                    <p class="w3-text-gray">Informe seus dados para continuar</p>
+                    <h2 class="w3-bold">Recuperar Senha</h2>
+                    <p class="w3-text-gray">Informe o seu e-mail cadastrado para receber as instruções de redefinição.</p>
                 </div>
 
                 <!-- Exibição de Mensagens de Sucesso -->
@@ -52,7 +44,7 @@
                     </div>
                 <?php endif; ?>
 
-                <!-- Exibição de Erro de Login -->
+                <!-- Exibição de Erros -->
                 <?php if (session()->getFlashdata('erro')) : ?>
                     <div class="w3-panel w3-red w3-display-container w3-round w3-margin-horizontal w3-padding">
                         <span onclick="this.parentElement.style.display='none'" class="w3-button w3-large w3-display-topright">&times;</span>
@@ -60,41 +52,27 @@
                     </div>
                 <?php endif; ?>
 
-                <form action="<?= base_url('login/autenticar') ?>" method="post" class="w3-container w3-margin-top">
+                <form action="<?= base_url('esqueci-senha/enviar') ?>" method="post" class="w3-container w3-margin-top">
                     <?= csrf_field() ?>
 
                     <!-- Campo de E-mail -->
                     <p>
-                        <label class="w3-text-dark-grey"><b>E-mail</b></label>
+                        <label class="w3-text-dark-grey"><b>E-mail cadastrado</b></label>
                         <input class="w3-input w3-border w3-round" type="email" name="email" required placeholder="seu@email.com" value="<?= old('email') ?>">
                     </p>
 
-                    <!-- Campo de Senha com link Esqueci minha senha -->
-                    <p>
-                        <div class="w3-cell-row">
-                            <div class="w3-cell">
-                                <label class="w3-text-dark-grey"><b>Senha</b></label>
-                            </div>
-                            <div class="w3-cell w3-right-align">
-                                <a href="<?= base_url('esqueci-senha') ?>" class="w3-text-blue link-esqueci">Esqueceu a senha?</a>
-                            </div>
-                        </div>
-                        <input class="w3-input w3-border w3-round" type="password" name="senha" required placeholder="********">
-                    </p>
-
-                    <!-- Botão de Entrar -->
+                    <!-- Botão de Enviar Instructions -->
                     <p class="w3-margin-top">
                         <button type="submit" class="w3-button w3-blue w3-block w3-round-large w3-large w3-card">
-                            Entrar <i class="fa-solid fa-arrow-right-to-bracket w3-margin-left"></i>
+                            Enviar Link de Recuperação <i class="fa-solid fa-paper-plane w3-margin-left"></i>
                         </button>
                     </p>
                 </form>
 
-                <!-- Link de Redirecionamento para Cadastro -->
+                <!-- Link de Retorno ao Login -->
                 <div class="w3-container w3-center w3-margin-top w3-border-top w3-padding-16">
-                    <p class="w3-text-gray">Ainda não tem uma conta?</p>
-                    <a href="<?= base_url('usuario/cadastrar') ?>" class="w3-button w3-light-grey w3-border w3-round w3-block">
-                        Criar nova conta (Cadastre-se)
+                    <a href="<?= base_url('login') ?>" class="w3-button w3-light-grey w3-border w3-round w3-block">
+                        <i class="fa-solid fa-arrow-left w3-margin-right"></i> Voltar para a tela de Login
                     </a>
                 </div>
             </div>

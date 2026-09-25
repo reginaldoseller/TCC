@@ -19,6 +19,7 @@ class ProfissionalModel extends Model
         'latitude', 
         'longitude', 
         'status', // ENUM: 'em_analise', 'ativo', 'inativo', 'pendente', 'indisponivel', 'ajustes_solicitados', 'suspenso'
+        'permite_redes_sociais',
         'observacao_admin',
         'bloqueado_ate'
     ];
@@ -64,7 +65,7 @@ class ProfissionalModel extends Model
      */
     public function getPendentes()
     {
-        return $this->select('profissional.usuario_id as profissional_id, profissional.status, usuario.id as usuario_id, usuario.nome, usuario.email, usuario.dtCadastro')
+        return $this->select('profissional.*, usuario.id as usuario_id, usuario.nome, usuario.email, usuario.cidade, usuario.estado')
                     ->join('usuario', 'usuario.id = profissional.usuario_id')
                     ->whereIn('profissional.status', ['em_analise', 'pendente'])
                     ->findAll();

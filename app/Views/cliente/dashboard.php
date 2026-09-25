@@ -53,28 +53,40 @@
 <body>
 
     <?php
-    // Identifica o perfil de visualização ativo e consulta o status na tabela 'profissional'
+    // Identifica o perfil de visualização ativo
     $perfilAtivo = session()->get('perfil_ativo') ?? 'Cliente';
     $usuarioId   = session()->get('id');
     $isAdmin     = (bool) session()->get('is_admin');
 
     $db = \Config\Database::connect();
+
+    // 1. Consulta o status da conta GERAL do usuário (Tabela 'usuario')
+    $dadosUsuario = $db->table('usuario')
+        ->where('id', $usuarioId)
+        ->get()
+        ->getRowArray();
+
+    $statusUsuario       = $dadosUsuario['status'] ?? 'ativo';
+    $motivoBloqueio      = $dadosUsuario['motivo_bloqueio'] ?? '';
+    $usuarioBloqueadoAte = $dadosUsuario['bloqueado_ate'] ?? '';
+
+    // 2. Consulta o status do perfil PROFISSIONAL (Tabela 'profissional')
     $dadosProfissional = $db->table('profissional')
         ->where('usuario_id', $usuarioId)
         ->get()
         ->getRowArray();
 
-    // Validação estrita de status
+    // Validação de status do Profissional
     $temCadastroProfissional = !empty($dadosProfissional);
     $statusProfissional      = $temCadastroProfissional ? ($dadosProfissional['status'] ?? '') : '';
     $observacaoAdmin        = $temCadastroProfissional ? ($dadosProfissional['observacao_admin'] ?? '') : '';
     $bloqueadoAte           = $temCadastroProfissional ? ($dadosProfissional['bloqueado_ate'] ?? '') : '';
 
-    // Mapeamento dos cenários
+    // Mapeamento dos cenários do Profissional
     $ehProfissionalAtivo        = ($temCadastroProfissional && $statusProfissional === 'ativo') || $isAdmin;
     $ehProfissionalEmAnalise    = $temCadastroProfissional && ($statusProfissional === 'em_analise' || $statusProfissional === 'pendente');
     $ehProfissionalAjustes      = $temCadastroProfissional && ($statusProfissional === 'ajustes_solicitados');
-    $ehProfissionalIndisponivel = $temCadastroProfissional && ($statusProfissional === 'indisponivel' || $statusProfissional === 'suspenso');
+    $ehProfissionalIndisponivel = $temCadastroProfissional && ($statusProfissional === 'indisponivel');
     ?>
 
     <!-- Navbar Principal -->
@@ -123,6 +135,28 @@
             <div class="alert alert-danger alert-dismissible fade show" role="alert">
                 <i class="bi bi-x-circle-fill me-2"></i><?= session()->getFlashdata('erro') ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php endif; ?>
+
+        <!-- Alerta Crítico: Usuário Geral Suspenso -->
+        <?php if ($statusUsuario === 'suspenso'): ?>
+            <div class="alert alert-danger border-start border-4 border-danger shadow-sm mb-4" role="alert">
+                <div class="d-flex align-items-start gap-3">
+                    <i class="bi bi-exclamation-octagon-fill fs-3 text-danger"></i>
+                    <div>
+                        <h5 class="alert-heading fw-bold mb-1">Sua conta está temporariamente suspensa</h5>
+                        <p class="mb-1">O acesso às ações da sua conta de usuário foi restrito pela administração.</p>
+                        <?php if (!empty($motivoBloqueio)): ?>
+                            <p class="mb-1 small"><strong>Motivo do Bloqueio:</strong> <?= esc($motivoBloqueio) ?></p>
+                        <?php endif; ?>
+                        <?php if (!empty($usuarioBloqueadoAte)): ?>
+                            <small class="text-dark fw-semibold">
+                                <i class="bi bi-calendar-event me-1"></i> Previsão de liberação da conta: 
+                                <strong><?= date('d/m/Y H:i', strtotime($usuarioBloqueadoAte)) ?></strong>
+                            </small>
+                        <?php endif; ?>
+                    </div>
+                </div>
             </div>
         <?php endif; ?>
 
@@ -255,7 +289,9 @@
                     <h5 class="fw-bold">Solicitar Orçamento</h5>
                     <p class="text-muted small">Precisa de um serviço? Descreva o que precisa e receba propostas de profissionais.</p>
                     <div class="mt-auto">
-                        <button class="btn btn-primary opacity-50 text-white w-100" disabled>Em breve</button>
+                        <button class="btn btn-primary opacity-50 text-white w-100" <?= ($statusUsuario === 'suspenso') ? 'disabled' : '' ?>>
+                            <?= ($statusUsuario === 'suspenso') ? 'Bloqueado' : 'Em breve' ?>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -271,7 +307,9 @@
                     <h5 class="fw-bold">Orçamentos em Aberto</h5>
                     <p class="text-muted small">Acompanhe e responda às propostas enviadas pelos profissionais qualificados.</p>
                     <div class="mt-auto">
-                        <button class="btn btn-warning opacity-50 text-white w-100" disabled>Em breve</button>
+                        <button class="btn btn-warning opacity-50 text-white w-100" <?= ($statusUsuario === 'suspenso') ? 'disabled' : '' ?>>
+                            <?= ($statusUsuario === 'suspenso') ? 'Bloqueado' : 'Em breve' ?>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -287,7 +325,9 @@
                     <h5 class="fw-bold">Serviços Concluídos</h5>
                     <p class="text-muted small">Consulte o histórico dos seus serviços finalizados e avaliações feitas.</p>
                     <div class="mt-auto">
-                        <button class="btn btn-success opacity-50 text-white w-100" disabled>Em breve</button>
+                        <button class="btn btn-success opacity-50 text-white w-100" <?= ($statusUsuario === 'suspenso') ? 'disabled' : '' ?>>
+                            <?= ($statusUsuario === 'suspenso') ? 'Bloqueado' : 'Em breve' ?>
+                        </button>
                     </div>
                 </div>
             </div>
