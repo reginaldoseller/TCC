@@ -10,6 +10,9 @@
     <style>
         body {
             background-color: #fcfbfa;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
         .navbar-custom {
@@ -50,6 +53,12 @@
         .btn-ocre:hover {
             background-color: #c9ad7f;
             color: #2b2826;
+        }
+
+        .footer-custom {
+            margin-top: auto;
+            background-color: #ffffff;
+            border-top: 1px solid #e9ecef;
         }
     </style>
 </head>
@@ -145,7 +154,7 @@
         </div>
 
         <!-- Abas Administrativas -->
-        <div class="card card-custom bg-white p-4">
+        <div class="card card-custom bg-white p-4 mb-5">
             <ul class="nav nav-pills mb-4" id="admin-tabs" role="tablist">
                 <li class="nav-item">
                     <button class="nav-link active" id="tab-pendentes" data-bs-toggle="pill" data-bs-target="#content-pendentes" type="button">
@@ -182,21 +191,24 @@
                                         <th>ID Prof.</th>
                                         <th>Nome</th>
                                         <th>E-mail</th>
-                                        <th>Data Solicitação</th>
+                                        <th>Cidade / UF</th>
                                         <th class="text-end">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach ($profissionaisPendentes as $prof): ?>
-                                        <?php $profId = $prof['profissional_id'] ?? $prof['id']; ?>
+                                    <?php foreach ($profissionaisPendentes as$prof): ?>
+                                        <?php 
+                                            // Procura o ID primário de forma segura evitando Undefined Array Key
+                                            $profId =$prof['usuario_id'] ?? $prof['profissional_id'] ?? $prof['id'] ?? '-'; 
+                                        ?>
                                         <tr>
-                                            <td>#<?= $profId ?? '-' ?></td>
-                                            <td><strong><?= $prof['nome'] ?? 'Sem nome' ?></strong></td>
-                                            <td><?= $prof['email'] ?? '-' ?></td>
-                                            <td><?= !empty($prof['dtCadastro']) ? date('d/m/Y H:i', strtotime($prof['dtCadastro'])) : '-' ?></td>
+                                            <td>#<?= $profId ?></td>
+                                            <td><strong><?= esc($prof['nome'] ?? 'Sem nome') ?></strong></td>
+                                            <td><?= esc($prof['email'] ?? '-') ?></td>
+                                            <td><?= esc(($prof['cidade'] ?? '-') . ' / ' . ($prof['estado'] ?? '-')) ?></td>
                                             <td class="text-end">
                                                 <!-- Botão Aprovar -->
-                                                <a href="<?= site_url('admin/profissional/aprovar/' . $profId) ?>" class="btn btn-success btn-sm">
+                                                <a href="<?= site_url('admin/aprovarProfissional/' . $profId) ?>" class="btn btn-success btn-sm">
                                                     <i class="bi bi-check-lg"></i> Aprovar
                                                 </a>
 
@@ -205,8 +217,8 @@
                                                     <i class="bi bi-pencil-square"></i> Solicitar Ajustes
                                                 </button>
 
-                                                <!-- Botão Suspender Adesão (Sem usar termo rejeitar) -->
-                                                <a href="<?= site_url('admin/profissional/suspender/' . $profId) ?>" class="btn btn-secondary btn-sm" onclick="return confirm('Confirma a suspensão temporária da adesão deste perfil?')">
+                                                <!-- Botão Suspender Adesão -->
+                                                <a href="<?= site_url('admin/suspenderProfissional/' . $profId) ?>" class="btn btn-secondary btn-sm" onclick="return confirm('Confirms a suspensão temporária da adesão deste perfil?')">
                                                     <i class="bi bi-slash-circle"></i> Suspender
                                                 </a>
                                             </td>
@@ -216,14 +228,15 @@
                                         <div class="modal fade" id="modalAjustes<?= $profId ?>" tabindex="-1" aria-hidden="true">
                                             <div class="modal-dialog modal-dialog-centered">
                                                 <div class="modal-content">
-                                                    <form action="<?= site_url('admin/profissional/solicitarAjustes/' . $profId) ?>" method="post">
+                                                    <form action="<?= site_url('admin/solicitarAjustes/' . $profId) ?>" method="post">
+                                                        <?= csrf_field() ?>
                                                         <div class="modal-header">
                                                             <h5 class="modal-title fw-bold">Orientação de Ajustes</h5>
                                                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                                                         </div>
                                                         <div class="modal-body text-start">
                                                             <p class="small text-muted mb-2">
-                                                                Digite abaixo quais dados ou informações o profissional <strong><?= $prof['nome'] ?? '' ?></strong> precisa corrigir para regularizar a solicitação:
+                                                                Digite abaixo quais dados ou informações o profissional <strong><?= esc($prof['nome'] ?? '') ?></strong> precisa corrigir para regularizar a solicitação:
                                                             </p>
                                                             <div class="mb-3">
                                                                 <textarea class="form-control" name="observacao" rows="4" placeholder="Ex: A foto do documento está ilegível ou a descrição do perfil necessita de mais detalhes." required></textarea>
@@ -255,22 +268,87 @@
                                     <th>ID</th>
                                     <th>Nome</th>
                                     <th>E-mail</th>
-                                    <th>Data Cadastro</th>
+                                    <th>Status</th>
+                                    <th class="text-end">Ações</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php if (!empty($usuarios)): ?>
-                                    <?php foreach ($usuarios as $usr): ?>
+                                    <?php foreach ($usuarios as$usr): ?>
+                                        <?php 
+                                            $uId = $usr['id'] ?? $usr['usuario_id'] ?? null; 
+                                            $uStatus =$usr['status'] ?? 'ativo';
+                                        ?>
                                         <tr>
-                                            <td>#<?= $usr['id'] ?? '-' ?></td>
-                                            <td><strong><?= $usr['nome'] ?? 'Sem nome' ?></strong></td>
-                                            <td><?= $usr['email'] ?? '-' ?></td>
-                                            <td><?= !empty($usr['dtCadastro']) ? date('d/m/Y', strtotime($usr['dtCadastro'])) : '-' ?></td>
+                                            <td>#<?= $uId ?></td>
+                                            <td>
+                                                <strong><?= esc($usr['nome'] ?? 'Sem nome') ?></strong>
+                                                <?php if ($uId == session()->get('id')): ?>
+                                                    <span class="badge bg-secondary ms-1">Você</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td><?= esc($usr['email'] ?? '-') ?></td>
+                                            <td>
+                                                <?php if ($uStatus === 'suspenso'): ?>
+                                                    <span class="badge bg-danger">Suspenso</span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-success">Ativo</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="text-end">
+                                                <?php if ($uId == session()->get('id')): ?>
+                                                    <button class="btn btn-outline-secondary btn-sm" disabled title="Você não pode suspender sua própria conta">
+                                                        <i class="bi bi-slash-circle"></i> Suspender
+                                                    </button>
+                                                <?php elseif ($uStatus === 'suspenso'): ?>
+                                                    <a href="<?= site_url('admin/reativarUsuario/' . $uId) ?>" class="btn btn-outline-success btn-sm" onclick="return confirm('Deseja reativar o acesso deste usuário?')">
+                                                        <i class="bi bi-check-circle"></i> Reativar
+                                                    </a>
+                                                <?php else: ?>
+                                                    <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalSuspenderUsuario<?= $uId ?>">
+                                                        <i class="bi bi-slash-circle"></i> Suspender
+                                                    </button>
+                                                <?php endif; ?>
+                                            </td>
                                         </tr>
+
+                                        <!-- Modal para Suspender Usuário -->
+                                        <div class="modal fade" id="modalSuspenderUsuario<?= $uId ?>" tabindex="-1" aria-hidden="true">
+                                            <div class="modal-dialog modal-dialog-centered">
+                                                <div class="modal-content text-start">
+                                                    <form action="<?= site_url('admin/suspenderUsuario/' . $uId) ?>" method="post">
+                                                        <?= csrf_field() ?>
+                                                        <div class="modal-header bg-danger text-white">
+                                                            <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-octagon me-1"></i> Suspender Conta de Usuário</h5>
+                                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            <p class="small text-muted mb-3">
+                                                                A suspensão impedirá o usuário <strong><?= esc($usr['nome'] ?? '') ?></strong> de realizar novas solicitações no sistema.
+                                                            </p>
+                                                            <div class="mb-3">
+                                                                <label class="form-label fw-bold small">Motivo da Suspensão</label>
+                                                                <textarea class="form-control" name="motivo_bloqueio" rows="3" placeholder="Ex: Violação dos termos de uso ou denúncia de comportamento inadequado." required></textarea>
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label class="form-label fw-bold small">Bloquear Até (Opcional)</label>
+                                                                <input type="datetime-local" class="form-control" name="bloqueado_ate">
+                                                                <span class="form-text text-muted extra-small">Deixe em branco para bloqueio por tempo indeterminado.</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                                                            <button type="submit" class="btn btn-danger">Confirmar Suspensão</button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+
                                     <?php endforeach; ?>
                                 <?php else: ?>
                                     <tr>
-                                        <td colspan="4" class="text-center text-muted py-3">Nenhum usuário cadastrado.</td>
+                                        <td colspan="5" class="text-center text-muted py-3">Nenhum usuário cadastrado.</td>
                                     </tr>
                                 <?php endif; ?>
                             </tbody>
@@ -284,7 +362,8 @@
                         <div class="col-md-5">
                             <div class="card border-0 bg-light p-3">
                                 <h6 class="fw-bold mb-3 text-dark">Nova Categoria</h6>
-                                <form action="<?= site_url('admin/categoria/criar') ?>" method="post">
+                                <form action="<?= site_url('admin/criarCategoria') ?>" method="post">
+                                    <?= csrf_field() ?>
                                     <div class="mb-3">
                                         <label for="nome" class="form-label text-secondary small">Nome da Categoria</label>
                                         <input type="text" class="form-control" id="nome" name="nome" placeholder="Ex: Reformas, Assistência Técnica" required>
@@ -300,9 +379,9 @@
                             <h6 class="fw-bold mb-3 text-dark">Categorias Existentes</h6>
                             <ul class="list-group">
                                 <?php if (!empty($categorias)): ?>
-                                    <?php foreach ($categorias as $cat): ?>
+                                    <?php foreach ($categorias as$cat): ?>
                                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                                            <span><i class="bi bi-tag me-2 text-muted"></i><?= $cat['categoria'] ?? $cat['nome'] ?? 'Sem nome' ?></span>
+                                            <span><i class="bi bi-tag me-2 text-muted"></i><?= esc($cat['categoria'] ?? $cat['nome'] ?? 'Sem nome') ?></span>
                                             <span class="badge bg-light text-dark border">#<?= $cat['id'] ?? '-' ?></span>
                                         </li>
                                     <?php endforeach; ?>
@@ -318,7 +397,33 @@
         </div>
     </div>
 
+    <!-- Rodapé -->
+    <footer class="footer-custom py-3 text-center">
+        <div class="container">
+            <p class="mb-0 text-muted small">
+                <span class="text-warning fw-bold">&lt;/&gt;</span> Desenvolvido pelo <strong>Grupo ConectaDev</strong>
+            </p>
+            <p class="mb-0 text-muted extra-small" style="font-size: 0.8rem;">
+                &copy; <?= date('Y') ?> GetNinjas - Todos os direitos reservados.
+            </p>
+        </div>
+    </footer>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Script para manter a Aba ativa via Hash da URL -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const hash = window.location.hash;
+            if (hash) {
+                const triggerEl = document.querySelector(`button[data-bs-target="${hash}"]`);
+                if (triggerEl) {
+                    const tab = new bootstrap.Tab(triggerEl);
+                    tab.show();
+                }
+            }
+        });
+    </script>
 </body>
 
 </html>

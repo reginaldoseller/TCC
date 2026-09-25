@@ -5,7 +5,7 @@ namespace App\Controllers;
 use App\Controllers\BaseController;
 use App\Models\UsuarioModel;
 use App\Models\ProfissionalModel;
-use App\Models\ContatoLinkModel; // Importação adicionada
+use App\Models\ContatoLinkModel;
 
 class UsuarioController extends BaseController
 {
@@ -70,20 +70,20 @@ class UsuarioController extends BaseController
         $usuarioModel     = new UsuarioModel();
         $contatoLinkModel = new ContatoLinkModel();
 
-        $cpfLimpo = preg_replace('/[^0-9]/', '', $this->request->getPost('cpf'));
-        $cepLimpo = preg_replace('/[^0-9]/', '', $this->request->getPost('cep'));
-        $telefone = $this->request->getPost('telefone');
+        $cpfLimpo      = preg_replace('/[^0-9]/', '', $this->request->getPost('cpf'));
+        $cepLimpo      = preg_replace('/[^0-9]/', '', $this->request->getPost('cep'));
+        $telefoneLimpo = preg_replace('/[^0-9]/', '', $this->request->getPost('telefone'));
 
         $dados = [
             'nome'   => $this->request->getPost('nome'),
             'cpf'    => $cpfLimpo,
             'email'  => $this->request->getPost('email'),
-            'senha'  => $this->request->getPost('senha'),
+            'senha'  => password_hash($this->request->getPost('senha'), PASSWORD_DEFAULT),
             'cidade' => $this->request->getPost('cidade'),
             'estado' => strtoupper($this->request->getPost('estado')),
             'bairro' => $this->request->getPost('bairro'),
             'cep'    => $cepLimpo,
-            'ativo'  => 1
+            // 'status' é definido como 'ativo' por padrão no banco de dados
         ];
 
         // Transação para assegurar consistência do cadastro
@@ -94,8 +94,8 @@ class UsuarioController extends BaseController
         $novoId = $usuarioModel->getInsertID();
 
         // Se o campo de telefone for enviado no formulário, salva em contato_links
-        if (!empty($telefone)) {
-            $contatoLinkModel->salvarContato($novoId, 'telefone', $telefone);
+        if (!empty($telefoneLimpo)) {
+            $contatoLinkModel->salvarContato($novoId, 'telefone', $telefoneLimpo);
         }
 
         $db->transComplete();
@@ -117,7 +117,6 @@ class UsuarioController extends BaseController
         }
     }
 
-
     // Processa a validação de e-mail e senha no Login
     public function autenticar()
     {
@@ -128,9 +127,34 @@ class UsuarioController extends BaseController
         $usuario = $usuarioModel->verificarCredenciais($email, $senha);
 
         if ($usuario) {
-            // Checa se a conta está ativa
-            if (isset($usuario['ativo']) && (int)$usuario['ativo'] !== 1) {
-                return redirect()->back()->withInput()->with('erro', 'Sua conta está suspensa. Entre em contato com a administração.');
+            // 1. Verificação de Banimento Definitivo
+            if ($usuario['status'] === 'banido') {
+                $mensagemBanido = 'Sua conta foi permanentemente suspensa por descumprimento dos termos de uso.';
+                if (!empty($usuario['motivo_bloqueio'])) {
+                    $mensagemBanido .= ' Motivo: ' . $usuario['motivo_bloqueio'];
+                }
+                return redirect()->back()->withInput()->with('erro', $mensagemBanido);
+            }
+
+            // 2. Verificação de Suspensão Temporária
+            if ($usuario['status'] === 'suspenso') {
+                $agora = date('Y-m-d H:i:s');
+                if (!empty($usuario['bloqueado_ate']) && $usuario['bloqueado_ate'] > $agora) {
+                    $dataLiberacao = date('d/m/Y \à\s H:i', strtotime($usuario['bloqueado_ate']));
+                    $mensagemSuspenso = "Sua conta está suspensa temporariamente até {$dataLiberacao}.";
+                    if (!empty($usuario['motivo_bloqueio'])) {
+                        $mensagemSuspenso .= " Motivo: " . $usuario['motivo_bloqueio'];
+                    }
+                    return redirect()->back()->withInput()->with('erro', $mensagemSuspenso);
+                } else {
+                    // O tempo de suspensão expirou: reativa a conta automaticamente
+                    $usuarioModel->update($usuario['id'], [
+                        'status'          => 'ativo',
+                        'motivo_bloqueio' => null,
+                        'bloqueado_ate'   => null
+                    ]);
+                    $usuario['status'] = 'ativo';
+                }
             }
 
             // Consulta perfil do profissional via ProfissionalModel
@@ -179,7 +203,6 @@ class UsuarioController extends BaseController
         return redirect()->back()->withInput()->with('erro', 'E-mail ou senha inválidos.');
     }
 
-
     // Carrega a tela do painel do cliente
     public function dashboard()
     {
@@ -190,7 +213,6 @@ class UsuarioController extends BaseController
         return view('cliente/dashboard');
     }
 
-
     // Encerra a sessão do usuário
     public function logout()
     {
@@ -198,14 +220,12 @@ class UsuarioController extends BaseController
         return redirect()->to('/')->with('sucesso', 'Você saiu da sua conta com sucesso.');
     }
 
-
     // Alterna o modo ativo de visualização para Cliente
     public function mudarParaCliente()
     {
         session()->set('perfil_ativo', 'Cliente');
         return redirect()->to('cliente/dashboard');
     }
-
 
     // Alterna o modo ativo de visualização para Profissional
     public function mudarParaProfissional()
@@ -227,7 +247,6 @@ class UsuarioController extends BaseController
         return redirect()->to('profissional/ativarPerfil')->with('aviso', 'Preencha seus dados para se cadastrar como profissional.');
     }
 
-    
     // Alterna o modo ativo de visualização para Administrador
     public function mudarParaAdmin()
     {
@@ -237,5 +256,202 @@ class UsuarioController extends BaseController
 
         session()->set('perfil_ativo', 'Administrador');
         return redirect()->to('admin/dashboard');
+    }
+
+    // Exibe o formulário de solicitação de recuperação de senha
+    public function esqueciSenha()
+    {
+        return view('usuarios/esqueci_senha');
+    }
+
+    // Processa a solicitação e gera o token de recuperação
+    public function processarEsqueciSenha()
+    {
+        $email = $this->request->getPost('email');
+
+        $usuarioModel = new UsuarioModel();
+        $usuario = $usuarioModel->where('email', $email)->first();
+
+        if (!$usuario) {
+            // Por segurança, exibe mensagemGenérica para não expor e-mails cadastrados
+            return redirect()->back()->with('sucesso', 'Se o e-mail estiver cadastrado, você receberá o link para redefinição em instantes.');
+        }
+
+        // Gera token aleatório de 32 bytes (64 caracteres hexadecimais)
+        $token = bin2hex(random_bytes(32));
+        $expiracao = date('Y-m-d H:i:s', strtotime('+1 hour'));
+
+        $usuarioModel->update($usuario['id'], [
+            'reset_token'      => $token,
+            'reset_expires_at' => $expiracao,
+        ]);
+
+        // Cria o link que será enviado ao utilizador
+        $linkRedefinicao = base_url("redefinir-senha/{$token}");
+
+        // TODO: Enviar e-mail utilizando a classe \Config\Services::email() do CodeIgniter
+        // Exemplo simples para teste em ambiente local (desenvolvimento):
+        log_message('info', "Link de recuperação para {$email}: {$linkRedefinicao}");
+
+        return redirect()->back()->with('sucesso', 'Se o e-mail estiver cadastrado, você receberá o link para redefinição em instantes.');
+    }
+
+    // Exibe o formulário para digitar a nova senha via token
+    public function redefinirSenha($token = null)
+    {
+        if (empty($token)) {
+            return redirect()->to('login')->with('erro', 'Token inválido ou ausente.');
+        }
+
+        $usuarioModel = new UsuarioModel();
+        $usuario = $usuarioModel->where('reset_token', $token)->first();
+
+        if (!$usuario) {
+            return redirect()->to('login')->with('erro', 'Token de redefinição inválido.');
+        }
+
+        // Verifica se o token já expirou
+        $agora = date('Y-m-d H:i:s');
+        if ($usuario['reset_expires_at'] < $agora) {
+            return redirect()->to('esqueci-senha')->with('erro', 'Este link de redefinição expirou. Solicite um novo.');
+        }
+
+        return view('usuarios/redefinir_senha', ['token' => $token]);
+    }
+
+    // Processa a gravação da nova senha
+    public function salvarNovaSenha()
+    {
+        $token           = $this->request->getPost('token');
+        $senha           = $this->request->getPost('senha');
+        $confirmarSenha  = $this->request->getPost('confirmar_senha');
+
+        if ($senha !== $confirmarSenha) {
+            return redirect()->back()->with('erro', 'As senhas não conferem.');
+        }
+
+        if (strlen($senha) < 6) {
+            return redirect()->back()->with('erro', 'A nova senha deve ter no mínimo 6 caracteres.');
+        }
+
+        $usuarioModel = new UsuarioModel();
+        $usuario = $usuarioModel->where('reset_token', $token)->first();
+
+        if (!$usuario || $usuario['reset_expires_at'] < date('Y-m-d H:i:s')) {
+            return redirect()->to('login')->with('erro', 'Solicitação inválida ou expirada.');
+        }
+
+        // Atualiza a nova senha (o hashPassword callback da model trata da criptografia Argon2id)
+        $usuarioModel->update($usuario['id'], [
+            'senha'            => $senha,
+            'reset_token'      => null,
+            'reset_expires_at' => null,
+        ]);
+
+        return redirect()->to('login')->with('sucesso', 'Sua senha foi alterada com sucesso! Faça login com as novas credenciais.');
+    }
+
+    // Exibe a tela de edição do perfil
+    // Exibe a tela de edição do perfil
+    public function meuPerfil()
+    {
+        if (!session()->get('logged_in')) {
+            return redirect()->to('login')->with('erro', 'Faça login para acessar o seu perfil.');
+        }
+
+        $usuarioId = session()->get('id');
+        $usuarioModel = new UsuarioModel();
+        $contatoLinkModel = new ContatoLinkModel();
+
+        $usuario = $usuarioModel->find($usuarioId);
+
+        // Busca o telefone cadastrado na contato_links usando a coluna correta: tipoContato
+        $contatoTelefone = $contatoLinkModel->where('usuario_id', $usuarioId)
+                                            ->where('tipoContato', 'telefone')
+                                            ->first();
+
+        // Trata objeto ou array e lê o valor da coluna 'contato'
+        $telefoneValor = '';
+        if ($contatoTelefone) {
+            $telefoneValor = is_object($contatoTelefone) 
+                ? ($contatoTelefone->contato ?? '') 
+                : ($contatoTelefone['contato'] ?? '');
+        }
+
+        $data = [
+            'usuario'  => $usuario,
+            'telefone' => $telefoneValor
+        ];
+
+        return view('usuarios/meu_perfil', $data);
+    }
+
+    // Processa a atualização dos dados pessoais
+    public function atualizarPerfil()
+    {
+        if (!session()->get('logged_in')) {
+            return redirect()->to('login');
+        }
+
+        $usuarioId = session()->get('id');
+        $usuarioModel = new UsuarioModel();
+        $contatoLinkModel = new ContatoLinkModel();
+
+        // Validação simples dos dados
+        $regras = [
+            'nome'  => 'required|min_length[3]',
+            'email' => "required|valid_email|is_unique[usuario.email,id,{$usuarioId}]",
+        ];
+
+        if (!$this->validate($regras)) {
+            return redirect()->back()->withInput()->with('erro', $this->validator->listErrors());
+        }
+
+        $cepLimpo      = preg_replace('/[^0-9]/', '', $this->request->getPost('cep'));
+        $telefoneLimpo = preg_replace('/[^0-9]/', '', $this->request->getPost('telefone'));
+
+        $dadosAtualizacao = [
+            'nome'   => $this->request->getPost('nome'),
+            'email'  => $this->request->getPost('email'),
+            'cidade' => $this->request->getPost('cidade'),
+            'estado' => strtoupper($this->request->getPost('estado')),
+            'bairro' => $this->request->getPost('bairro'),
+            'cep'    => $cepLimpo,
+        ];
+
+        // Lógica para Troca de Senha (se preenchida)
+        $senhaAtual       = $this->request->getPost('senha_atual');
+        $novaSenha        = $this->request->getPost('nova_senha');
+        $confirmaNova     = $this->request->getPost('confirma_nova_senha');
+
+        if (!empty($novaSenha)) {
+            $usuarioLogado = $usuarioModel->find($usuarioId);
+
+            if (!password_verify($senhaAtual, $usuarioLogado['senha'])) {
+                return redirect()->back()->withInput()->with('erro', 'A senha atual informada está incorreta.');
+            }
+
+            if ($novaSenha !== $confirmaNova) {
+                return redirect()->back()->withInput()->with('erro', 'A nova senha e a confirmação não conferem.');
+            }
+
+            $dadosAtualizacao['senha'] = password_hash($novaSenha, PASSWORD_DEFAULT);
+        }
+
+        // Atualiza a tabela usuario
+        $usuarioModel->update($usuarioId, $dadosAtualizacao);
+
+        // Atualiza ou salva o telefone na contato_links
+        if (!empty($telefoneLimpo)) {
+            $contatoLinkModel->salvarContato($usuarioId, 'telefone', $telefoneLimpo);
+        }
+
+        // Atualiza a sessão ativa com o novo nome/e-mail
+        session()->set([
+            'nome'  => $dadosAtualizacao['nome'],
+            'email' => $dadosAtualizacao['email']
+        ]);
+
+        return redirect()->back()->with('sucesso', 'Perfil atualizado com sucesso!');
     }
 }
