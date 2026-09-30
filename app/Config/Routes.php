@@ -58,24 +58,28 @@ $routes->get('usuario/mudarParaCliente', [UsuarioController::class, 'mudarParaCl
 $routes->get('usuario/mudarParaProfissional', [UsuarioController::class, 'mudarParaProfissional']);
 $routes->get('usuario/mudarParaAdmin', [UsuarioController::class, 'mudarParaAdmin']);
 
-// --- Rotas Administrativas ---
+/// --- Rotas Administrativas ---
 $routes->group('admin', function($routes) {
     $routes->get('dashboard', 'AdminController::dashboard');
     
-    // Rotas de Profissionais
+    // Rotas de Aprovação / Gestão de Profissionais
+    $routes->get('aprovarProfissional/(:num)', 'AdminController::aprovarProfissional/$1');
     $routes->get('profissional/aprovar/(:num)', 'AdminController::aprovarProfissional/$1');
+
+    $routes->post('solicitarAjustes/(:num)', 'AdminController::solicitarAjustes/$1');
     $routes->post('profissional/solicitarAjustes/(:num)', 'AdminController::solicitarAjustes/$1');
+
+    $routes->get('suspenderProfissional/(:num)', 'AdminController::suspenderProfissional/$1');
     $routes->get('profissional/suspender/(:num)', 'AdminController::suspenderProfissional/$1');
     
-    // Rota de Categorias
-    $routes->post('categoria/criar', 'AdminController::criarCategoria');
-
-    
-    // Rota para suspender utilizador via POST
+    // Rotas de Usuários
+    $routes->post('suspenderUsuario/(:num)', 'AdminController::suspenderUsuario/$1');
     $routes->post('usuario/suspender/(:num)', 'AdminController::suspenderUsuario/$1');
     
-    // Rota para reativar utilizador (caso precises)
+    $routes->get('reativarUsuario/(:num)', 'AdminController::reativarUsuario/$1');
     $routes->get('usuario/reativar/(:num)', 'AdminController::reativarUsuario/$1');
 
-    $routes->post('profissional/solicitarAjustes/(:num)', 'AdminController::solicitarAjustes/$1');
+    // Rotas de Categorias
+    $routes->post('criarCategoria', 'AdminController::criarCategoria');
+    $routes->post('categoria/criar', 'AdminController::criarCategoria');
 });
