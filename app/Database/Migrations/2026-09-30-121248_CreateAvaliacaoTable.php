@@ -54,7 +54,7 @@ class CreateAvaliacaoTable extends Migration
 
         $this->forge->addKey('id', true);
         $this->forge->addForeignKey('usuario_id', 'usuario', 'id', 'CASCADE', 'CASCADE');
-        $this->forge->addForeignKey('profissional_id', 'profissional', 'id', 'CASCADE', 'CASCADE');
+       $this->forge->addForeignKey('profissional_id', 'profissional', 'usuario_id', 'CASCADE', 'CASCADE');
         $this->forge->addForeignKey('solicitacao_id', 'solicitacao_servico', 'id', 'SET NULL', 'CASCADE');
         $this->forge->createTable('avaliacao');
     }

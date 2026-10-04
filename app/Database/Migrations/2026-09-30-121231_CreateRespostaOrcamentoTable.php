@@ -45,7 +45,7 @@ class CreateRespostaOrcamentoTable extends Migration
 
         $this->forge->addKey('id', true);
         $this->forge->addForeignKey('solicitacao_id', 'solicitacao_servico', 'id', 'CASCADE', 'CASCADE');
-        $this->forge->addForeignKey('profissional_id', 'profissional', 'id', 'CASCADE', 'CASCADE');
+        $this->forge->addForeignKey('profissional_id', 'profissional', 'usuario_id', 'CASCADE', 'CASCADE');
         $this->forge->createTable('resposta_orcamento');
     }
 
