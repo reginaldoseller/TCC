@@ -16,11 +16,9 @@ $routes->get('login', [UsuarioController::class, 'login']);
 $routes->post('login/autenticar', [UsuarioController::class, 'autenticar']);
 $routes->get('logout', [UsuarioController::class, 'logout']);
 
-
 // Rotas do Perfil de Utilizador
 $routes->get('meu-perfil', 'UsuarioController::meuPerfil');
 $routes->post('usuario/atualizar-perfil', 'UsuarioController::atualizarPerfil');
-
 
 // Rotas de Recuperação de Senha
 $routes->get('esqueci-senha', 'UsuarioController::esqueciSenha');
@@ -28,14 +26,12 @@ $routes->post('esqueci-senha/enviar', 'UsuarioController::processarEsqueciSenha'
 $routes->get('redefinir-senha/(:any)', 'UsuarioController::redefinirSenha/$1');
 $routes->post('redefinir-senha/salvar', 'UsuarioController::salvarNovaSenha');
 
-
 // Rotas de Cadastro de Usuário
 $routes->get('usuario/cadastrar', [UsuarioController::class, 'novo']);
 $routes->post('usuario/criar', [UsuarioController::class, 'criar']);
 
 // Rota da Área do Cliente
 $routes->get('cliente/dashboard', [UsuarioController::class, 'dashboard']);
-
 
 // Rotas de Cadastro e Ativação do Profissional
 $routes->get('profissional/cadastrar', [ProfissionalController::class, 'cadastrar']);
@@ -47,18 +43,16 @@ $routes->post('profissional/processarAtivacao', [ProfissionalController::class, 
 $routes->get('profissional/ativar-perfil', [ProfissionalController::class, 'ativarPerfil']);
 $routes->get('profissional/dashboard', [ProfissionalController::class, 'dashboard']);
 
-
 // Rotas de Perfil Profissional
 $routes->get('profissional/editar-perfil', 'ProfissionalController::editarPerfil');
 $routes->post('profissional/atualizar-perfil', 'ProfissionalController::atualizarPerfil');
-
 
 // Rotas para alternar visualização entre os perfis
 $routes->get('usuario/mudarParaCliente', [UsuarioController::class, 'mudarParaCliente']);
 $routes->get('usuario/mudarParaProfissional', [UsuarioController::class, 'mudarParaProfissional']);
 $routes->get('usuario/mudarParaAdmin', [UsuarioController::class, 'mudarParaAdmin']);
 
-/// --- Rotas Administrativas ---
+// --- Rotas Administrativas ---
 $routes->group('admin', function($routes) {
     $routes->get('dashboard', 'AdminController::dashboard');
     
@@ -79,7 +73,11 @@ $routes->group('admin', function($routes) {
     $routes->get('reativarUsuario/(:num)', 'AdminController::reativarUsuario/$1');
     $routes->get('usuario/reativar/(:num)', 'AdminController::reativarUsuario/$1');
 
-    // Rotas de Categorias
-    $routes->post('criarCategoria', 'AdminController::criarCategoria');
-    $routes->post('categoria/criar', 'AdminController::criarCategoria');
+    // Rotas de Categorias (Corrigidas para aceitar tanto /cadastrarCategoria quanto /criarCategoria e /atualizarCategoria)
+    $routes->post('cadastrarCategoria', 'AdminController::cadastrarCategoria');
+    $routes->post('criarCategoria', 'AdminController::cadastrarCategoria');
+    $routes->post('categoria/criar', 'AdminController::cadastrarCategoria');
+    
+    $routes->post('atualizarCategoria', 'AdminController::atualizarCategoria');
+    $routes->post('categoria/atualizar', 'AdminController::atualizarCategoria');
 });

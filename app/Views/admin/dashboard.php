@@ -5,392 +5,99 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel Administrativo - GetNinjas</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- W3.CSS Core -->
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <!-- Ícones do Bootstrap -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
     <style>
         body {
             background-color: #fcfbfa;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
 
-        .navbar-custom {
+        .tab-content-item {
+            display: none;
+        }
+
+        /* Cores do tema customizado */
+        .w3-ocre {
+            background-color: #d8be92 !important;
+            color: #3d3a37 !important;
+        }
+
+        .w3-hover-ocre:hover {
+            background-color: #c9ad7f !important;
+            color: #2b2826 !important;
+        }
+
+        .w3-dark-custom {
             background-color: #3d3a37 !important;
+            color: #ffffff !important;
         }
 
-        .card-custom {
-            border: none;
+        .w3-active-tab {
+            background-color: #5c554e !important;
+            color: #ffffff !important;
+            font-weight: bold;
+        }
+
+        .w3-card-custom {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
             border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-        }
-
-        .border-ocre {
-            border-left-color: #d8be92 !important;
-        }
-
-        .nav-pills .nav-link.active {
-            background-color: #5c554e;
-            color: #ffffff;
-        }
-
-        .nav-pills .nav-link {
-            color: #6c635b;
-            font-weight: 500;
-        }
-
-        .nav-pills .nav-link:hover {
-            color: #3d3a37;
-        }
-
-        .btn-ocre {
-            background-color: #d8be92;
-            color: #3d3a37;
-            border: none;
-            font-weight: 600;
-        }
-
-        .btn-ocre:hover {
-            background-color: #c9ad7f;
-            color: #2b2826;
-        }
-
-        .footer-custom {
-            margin-top: auto;
-            background-color: #ffffff;
-            border-top: 1px solid #e9ecef;
         }
     </style>
 </head>
 
 <body>
 
-    <!-- Header Admin -->
-    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom px-4 mb-4">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="<?= site_url('admin/dashboard') ?>">
-                <i class="bi bi-shield-lock me-2"></i>Painel Administrativo
-            </a>
+    <!-- Header / Navbar Admin -->
+    <?= view('components/navbar') ?>
 
-            <div class="d-flex align-items-center gap-3">
-                <div class="dropdown">
-                    <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-person-badge me-1"></i> Alternar Perfil
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow">
-                        <li>
-                            <a class="dropdown-item fw-bold text-dark" href="<?= site_url('usuario/mudarParaAdmin') ?>">
-                                <i class="bi bi-shield-lock me-2 text-warning"></i>Modo Administrador
-                            </a>
-                        </li>
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-                        <li>
-                            <a class="dropdown-item" href="<?= site_url('usuario/mudarParaCliente') ?>">
-                                <i class="bi bi-person me-2"></i>Modo Cliente
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item" href="<?= site_url('usuario/mudarParaProfissional') ?>">
-                                <i class="bi bi-briefcase me-2"></i>Modo Profissional
-                            </a>
-                        </li>
-                    </ul>
-                </div>
+    <div class="w3-container w3-padding-24" style="max-width: 1200px; margin: 0 auto; width: 100%;">
 
-                <span class="text-white-50 small">Administrador</span>
-                <a href="<?= site_url('logout') ?>" class="btn btn-outline-light btn-sm">
-                    <i class="bi bi-box-arrow-right"></i> Sair
-                </a>
-            </div>
-        </div>
-    </nav>
-
-    <div class="container py-2">
-
-        <!-- Alertas -->
-        <?php if (session()->getFlashdata('sucesso')): ?>
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="bi bi-check-circle me-1"></i> <?= session()->getFlashdata('sucesso') ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        <?php endif; ?>
-
-        <?php if (session()->getFlashdata('erro')): ?>
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="bi bi-exclamation-triangle me-1"></i> <?= session()->getFlashdata('erro') ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        <?php endif; ?>
-
-        <?php if (session()->getFlashdata('aviso')): ?>
-            <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                <i class="bi bi-info-circle me-1"></i> <?= session()->getFlashdata('aviso') ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        <?php endif; ?>
+        <!-- Alertas de Feedback -->
+        <?= view('components/alerts') ?>
 
         <!-- Métricas Rápidas -->
-        <div class="row g-3 mb-4">
-            <div class="col-md-4">
-                <div class="card card-custom p-3 bg-white border-start border-4 border-ocre">
-                    <span class="text-muted small">Análises Pendentes</span>
-                    <h3 class="mb-0 text-dark"><?= count($profissionaisPendentes ?? []) ?></h3>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card card-custom p-3 bg-white border-start border-4 border-primary">
-                    <span class="text-muted small">Total de Usuários</span>
-                    <h3 class="mb-0 text-dark"><?= count($usuarios ?? []) ?></h3>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card card-custom p-3 bg-white border-start border-4 border-success">
-                    <span class="text-muted small">Categorias Ativas</span>
-                    <h3 class="mb-0 text-dark"><?= count($categorias ?? []) ?></h3>
-                </div>
-            </div>
-        </div>
+        <?= view('admin/components/cards_metricas') ?>
 
         <!-- Abas Administrativas -->
-        <div class="card card-custom bg-white p-4 mb-5">
-            <ul class="nav nav-pills mb-4" id="admin-tabs" role="tablist">
-                <li class="nav-item">
-                    <button class="nav-link active" id="tab-pendentes" data-bs-toggle="pill" data-bs-target="#content-pendentes" type="button">
-                        <i class="bi bi-person-check me-1"></i> Aprov. Profissionais (<?= count($profissionaisPendentes ?? []) ?>)
-                    </button>
-                </li>
-                <li class="nav-item">
-                    <button class="nav-link" id="tab-usuarios" data-bs-toggle="pill" data-bs-target="#content-usuarios" type="button">
-                        <i class="bi bi-people me-1"></i> Usuários
-                    </button>
-                </li>
-                <li class="nav-item">
-                    <button class="nav-link" id="tab-categorias" data-bs-toggle="pill" data-bs-target="#content-categorias" type="button">
-                        <i class="bi bi-tags me-1"></i> Categorias
-                    </button>
-                </li>
-            </ul>
+        <div class="w3-card-custom w3-white w3-padding-large w3-margin-top">
 
-            <div class="tab-content" id="admin-tabContent">
+            <!-- Barra de Navegação das Abas -->
+            <div class="w3-bar w3-border-bottom w3-margin-bottom">
+                <button id="btn-tab-pendentes" class="w3-bar-item w3-button tab-btn w3-active-tab w3-round-large w3-margin-right" onclick="openAdminTab(event, 'content-pendentes', '#content-pendentes')">
+                    <i class="bi bi-person-check me-1"></i> Aprov. Profissionais (<?= count($profissionaisPendentes ?? []) ?>)
+                </button>
+                <button id="btn-tab-usuarios" class="w3-bar-item w3-button tab-btn w3-round-large w3-margin-right" onclick="openAdminTab(event, 'content-usuarios', '#content-usuarios')">
+                    <i class="bi bi-people me-1"></i> Usuários
+                </button>
+                <button id="btn-tab-categorias" class="w3-bar-item w3-button tab-btn w3-round-large" onclick="openAdminTab(event, 'content-categorias', '#content-categorias')">
+                    <i class="bi bi-tags me-1"></i> Categorias
+                </button>
+            </div>
+
+            <!-- Conteúdo das Abas -->
+            <div id="admin-tabContent">
 
                 <!-- Aba 1: Profissionais Pendentes -->
-                <div class="tab-pane fade show active" id="content-pendentes">
-                    <h5 class="fw-bold mb-3 text-dark">Solicitações de Perfil Profissional</h5>
-                    <?php if (empty($profissionaisPendentes)): ?>
-                        <div class="text-center py-4 text-muted">
-                            <i class="bi bi-check2-circle fs-1"></i>
-                            <p class="mt-2 mb-0">Nenhuma solicitação pendente no momento.</p>
-                        </div>
-                    <?php else: ?>
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>ID Prof.</th>
-                                        <th>Nome</th>
-                                        <th>E-mail</th>
-                                        <th>Cidade / UF</th>
-                                        <th class="text-end">Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($profissionaisPendentes as$prof): ?>
-                                        <?php 
-                                            // Procura o ID primário de forma segura evitando Undefined Array Key
-                                            $profId =$prof['usuario_id'] ?? $prof['profissional_id'] ?? $prof['id'] ?? '-'; 
-                                        ?>
-                                        <tr>
-                                            <td>#<?= $profId ?></td>
-                                            <td><strong><?= esc($prof['nome'] ?? 'Sem nome') ?></strong></td>
-                                            <td><?= esc($prof['email'] ?? '-') ?></td>
-                                            <td><?= esc(($prof['cidade'] ?? '-') . ' / ' . ($prof['estado'] ?? '-')) ?></td>
-                                            <td class="text-end">
-                                                <!-- Botão Aprovar -->
-                                                <a href="<?= site_url('admin/aprovarProfissional/' . $profId) ?>" class="btn btn-success btn-sm">
-                                                    <i class="bi bi-check-lg"></i> Aprovar
-                                                </a>
-
-                                                <!-- Botão Solicitar Ajustes (Abre Modal) -->
-                                                <button type="button" class="btn btn-warning btn-sm text-dark" data-bs-toggle="modal" data-bs-target="#modalAjustes<?= $profId ?>">
-                                                    <i class="bi bi-pencil-square"></i> Solicitar Ajustes
-                                                </button>
-
-                                                <!-- Botão Suspender Adesão -->
-                                                <a href="<?= site_url('admin/suspenderProfissional/' . $profId) ?>" class="btn btn-secondary btn-sm" onclick="return confirm('Confirms a suspensão temporária da adesão deste perfil?')">
-                                                    <i class="bi bi-slash-circle"></i> Suspender
-                                                </a>
-                                            </td>
-                                        </tr>
-
-                                        <!-- Modal para Solicitar Ajustes de Dados -->
-                                        <div class="modal fade" id="modalAjustes<?= $profId ?>" tabindex="-1" aria-hidden="true">
-                                            <div class="modal-dialog modal-dialog-centered">
-                                                <div class="modal-content">
-                                                    <form action="<?= site_url('admin/solicitarAjustes/' . $profId) ?>" method="post">
-                                                        <?= csrf_field() ?>
-                                                        <div class="modal-header">
-                                                            <h5 class="modal-title fw-bold">Orientação de Ajustes</h5>
-                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                                                        </div>
-                                                        <div class="modal-body text-start">
-                                                            <p class="small text-muted mb-2">
-                                                                Digite abaixo quais dados ou informações o profissional <strong><?= esc($prof['nome'] ?? '') ?></strong> precisa corrigir para regularizar a solicitação:
-                                                            </p>
-                                                            <div class="mb-3">
-                                                                <textarea class="form-control" name="observacao" rows="4" placeholder="Ex: A foto do documento está ilegível ou a descrição do perfil necessita de mais detalhes." required></textarea>
-                                                            </div>
-                                                        </div>
-                                                        <div class="modal-footer">
-                                                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-                                                            <button type="submit" class="btn btn-warning">Enviar Orientação</button>
-                                                        </div>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    <?php endif; ?>
+                <div id="content-pendentes" class="tab-content-item" style="display: block;">
+                    <?= view('admin/components/tab_pendentes') ?>
                 </div>
 
                 <!-- Aba 2: Lista de Usuários -->
-                <div class="tab-pane fade" id="content-usuarios">
-                    <h5 class="fw-bold mb-3 text-dark">Usuários Cadastrados</h5>
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Nome</th>
-                                    <th>E-mail</th>
-                                    <th>Status</th>
-                                    <th class="text-end">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (!empty($usuarios)): ?>
-                                    <?php foreach ($usuarios as$usr): ?>
-                                        <?php 
-                                            $uId = $usr['id'] ?? $usr['usuario_id'] ?? null; 
-                                            $uStatus =$usr['status'] ?? 'ativo';
-                                        ?>
-                                        <tr>
-                                            <td>#<?= $uId ?></td>
-                                            <td>
-                                                <strong><?= esc($usr['nome'] ?? 'Sem nome') ?></strong>
-                                                <?php if ($uId == session()->get('id')): ?>
-                                                    <span class="badge bg-secondary ms-1">Você</span>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td><?= esc($usr['email'] ?? '-') ?></td>
-                                            <td>
-                                                <?php if ($uStatus === 'suspenso'): ?>
-                                                    <span class="badge bg-danger">Suspenso</span>
-                                                <?php else: ?>
-                                                    <span class="badge bg-success">Ativo</span>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td class="text-end">
-                                                <?php if ($uId == session()->get('id')): ?>
-                                                    <button class="btn btn-outline-secondary btn-sm" disabled title="Você não pode suspender sua própria conta">
-                                                        <i class="bi bi-slash-circle"></i> Suspender
-                                                    </button>
-                                                <?php elseif ($uStatus === 'suspenso'): ?>
-                                                    <a href="<?= site_url('admin/reativarUsuario/' . $uId) ?>" class="btn btn-outline-success btn-sm" onclick="return confirm('Deseja reativar o acesso deste usuário?')">
-                                                        <i class="bi bi-check-circle"></i> Reativar
-                                                    </a>
-                                                <?php else: ?>
-                                                    <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalSuspenderUsuario<?= $uId ?>">
-                                                        <i class="bi bi-slash-circle"></i> Suspender
-                                                    </button>
-                                                <?php endif; ?>
-                                            </td>
-                                        </tr>
-
-                                        <!-- Modal para Suspender Usuário -->
-                                        <div class="modal fade" id="modalSuspenderUsuario<?= $uId ?>" tabindex="-1" aria-hidden="true">
-                                            <div class="modal-dialog modal-dialog-centered">
-                                                <div class="modal-content text-start">
-                                                    <form action="<?= site_url('admin/suspenderUsuario/' . $uId) ?>" method="post">
-                                                        <?= csrf_field() ?>
-                                                        <div class="modal-header bg-danger text-white">
-                                                            <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-octagon me-1"></i> Suspender Conta de Usuário</h5>
-                                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                                                        </div>
-                                                        <div class="modal-body">
-                                                            <p class="small text-muted mb-3">
-                                                                A suspensão impedirá o usuário <strong><?= esc($usr['nome'] ?? '') ?></strong> de realizar novas solicitações no sistema.
-                                                            </p>
-                                                            <div class="mb-3">
-                                                                <label class="form-label fw-bold small">Motivo da Suspensão</label>
-                                                                <textarea class="form-control" name="motivo_bloqueio" rows="3" placeholder="Ex: Violação dos termos de uso ou denúncia de comportamento inadequado." required></textarea>
-                                                            </div>
-                                                            <div class="mb-3">
-                                                                <label class="form-label fw-bold small">Bloquear Até (Opcional)</label>
-                                                                <input type="datetime-local" class="form-control" name="bloqueado_ate">
-                                                                <span class="form-text text-muted extra-small">Deixe em branco para bloqueio por tempo indeterminado.</span>
-                                                            </div>
-                                                        </div>
-                                                        <div class="modal-footer">
-                                                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-                                                            <button type="submit" class="btn btn-danger">Confirmar Suspensão</button>
-                                                        </div>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <tr>
-                                        <td colspan="5" class="text-center text-muted py-3">Nenhum usuário cadastrado.</td>
-                                    </tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
+                <div id="content-usuarios" class="tab-content-item">
+                    <?= view('admin/components/tab_usuarios') ?>
                 </div>
 
                 <!-- Aba 3: Cadastro de Categorias -->
-                <div class="tab-pane fade" id="content-categorias">
-                    <div class="row g-4">
-                        <div class="col-md-5">
-                            <div class="card border-0 bg-light p-3">
-                                <h6 class="fw-bold mb-3 text-dark">Nova Categoria</h6>
-                                <form action="<?= site_url('admin/criarCategoria') ?>" method="post">
-                                    <?= csrf_field() ?>
-                                    <div class="mb-3">
-                                        <label for="nome" class="form-label text-secondary small">Nome da Categoria</label>
-                                        <input type="text" class="form-control" id="nome" name="nome" placeholder="Ex: Reformas, Assistência Técnica" required>
-                                    </div>
-                                    <button type="submit" class="btn btn-ocre w-100">
-                                        <i class="bi bi-plus-circle me-1"></i> Cadastrar Categoria
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-
-                        <div class="col-md-7">
-                            <h6 class="fw-bold mb-3 text-dark">Categorias Existentes</h6>
-                            <ul class="list-group">
-                                <?php if (!empty($categorias)): ?>
-                                    <?php foreach ($categorias as$cat): ?>
-                                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                                            <span><i class="bi bi-tag me-2 text-muted"></i><?= esc($cat['categoria'] ?? $cat['nome'] ?? 'Sem nome') ?></span>
-                                            <span class="badge bg-light text-dark border">#<?= $cat['id'] ?? '-' ?></span>
-                                        </li>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <li class="list-group-item text-muted text-center py-3">Nenhuma categoria cadastrada.</li>
-                                <?php endif; ?>
-                            </ul>
-                        </div>
-                    </div>
+                <div id="content-categorias" class="tab-content-item">
+                    <?= view('admin/components/tab_categorias') ?>
                 </div>
 
             </div>
@@ -398,29 +105,54 @@
     </div>
 
     <!-- Rodapé -->
-    <footer class="footer-custom py-3 text-center">
-        <div class="container">
-            <p class="mb-0 text-muted small">
-                <span class="text-warning fw-bold">&lt;/&gt;</span> Desenvolvido pelo <strong>Grupo ConectaDev</strong>
-            </p>
-            <p class="mb-0 text-muted extra-small" style="font-size: 0.8rem;">
-                &copy; <?= date('Y') ?> GetNinjas - Todos os direitos reservados.
-            </p>
-        </div>
-    </footer>
+    <?= view('components/footer') ?>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-    <!-- Script para manter a Aba ativa via Hash da URL -->
     <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const hash = window.location.hash;
+        function openAdminTab(evt, tabName, hash) {
+            let i, x, tablinks;
+            x = document.getElementsByClassName("tab-content-item");
+            for (i = 0; i < x.length; i++) {
+                x[i].style.display = "none";
+            }
+            tablinks = document.getElementsByClassName("tab-btn");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].classList.remove("w3-active-tab");
+            }
+            document.getElementById(tabName).style.display = "block";
+
+            if (evt && evt.currentTarget) {
+                evt.currentTarget.classList.add("w3-active-tab");
+            }
+
             if (hash) {
-                const triggerEl = document.querySelector(`button[data-bs-target="${hash}"]`);
-                if (triggerEl) {
-                    const tab = new bootstrap.Tab(triggerEl);
-                    tab.show();
-                }
+                history.replaceState(null, null, hash + window.location.search);
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const hash = window.location.hash;
+
+            let targetBtn = null;
+
+            // 1. PRIORIDADE MÁXIMA: Paginação/Filtros explícitos de USUÁRIOS
+            if (urlParams.has('page_usuarios') || urlParams.has('busca_nome') || urlParams.has('busca_email') || urlParams.has('busca_status')) {
+                targetBtn = document.getElementById('btn-tab-usuarios');
+            }
+            // 2. Paginação/Filtros explícitos de CATEGORIAS
+            else if (urlParams.has('page_categorias') || urlParams.has('busca_categoria')) {
+                targetBtn = document.getElementById('btn-tab-categorias');
+            }
+            // 3. Fallback pela Hash da URL
+            else if (hash === '#content-usuarios') {
+                targetBtn = document.getElementById('btn-tab-usuarios');
+            } else if (hash === '#content-categorias') {
+                targetBtn = document.getElementById('btn-tab-categorias');
+            }
+
+            // Ativa a aba correta
+            if (targetBtn) {
+                targetBtn.click();
             }
         });
     </script>

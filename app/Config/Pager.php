@@ -24,10 +24,11 @@ class Pager extends BaseConfig
         'default_full'   => 'CodeIgniter\Pager\Views\default_full',
         'default_simple' => 'CodeIgniter\Pager\Views\default_simple',
         'default_head'   => 'CodeIgniter\Pager\Views\default_head',
+        'w3_pagination'  => 'components/paginacao', // caminho para a paginação global
     ];
 
     /**
-     * --------------------------------------------------------------------------
+     * -------------------------------------------------------------------------
      * Items Per Page
      * --------------------------------------------------------------------------
      *
