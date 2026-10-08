@@ -35,24 +35,26 @@ class UsuarioModel extends Model
 
     protected function hashPassword(array $data)
     {
-        // Verifica se a chave 'senha' existe no array de dados enviado
-        if (isset($data['data']['senha'])) {
-            // Se a senha foi informada e não está vazia, gera o hash
-            if (!empty($data['data']['senha'])) {
-                $pepper = env('security.passwordPepper', '');
-                $senhaComPepper = $data['data']['senha'] . $pepper;
+        // Se a chave 'senha' não existe no payload enviado, retorna os dados intactos
+        if (!isset($data['data']['senha'])) {
+            return $data;
+        }
 
-                $options = [
-                    'memory_cost' => 65536,
-                    'time_cost'   => 3,
-                    'threads'     => 4,
-                ];
+        // Se a senha foi informada e não está vazia, gera o hash Argon2id
+        if (!empty($data['data']['senha'])) {
+            $pepper = env('security.passwordPepper', '');
+            $senhaComPepper = $data['data']['senha'] . $pepper;
 
-                $data['data']['senha'] = password_hash($senhaComPepper, PASSWORD_ARGON2ID, $options);
-            } else {
-                // Se foi enviada a chave 'senha' mas veio vazia (ex: formulário de edição), removemos do update
-                unset($data['data']['senha']);
-            }
+            $options = [
+                'memory_cost' => 65536,
+                'time_cost'   => 3,
+                'threads'     => 4,
+            ];
+
+            $data['data']['senha'] = password_hash($senhaComPepper, PASSWORD_ARGON2ID, $options);
+        } else {
+            // Se a chave 'senha' veio vazia no array, removemos para não sobrescrever o hash existente
+            unset($data['data']['senha']);
         }
 
         return $data;
