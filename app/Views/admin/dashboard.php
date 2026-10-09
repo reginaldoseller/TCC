@@ -12,12 +12,22 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
 
     <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+
         body {
             background-color: #fcfbfa;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        /* Expande o espaço central para empurrar o rodapé */
+        .main-content {
+            flex: 1 0 auto;
         }
 
         .tab-content-item {
@@ -55,10 +65,11 @@
 
 <body>
 
-    <!-- Header / Navbar Admin -->
+    <!-- Header / Navbar Admin Reutilizada -->
     <?= view('components/navbar') ?>
 
-    <div class="w3-container w3-padding-24" style="max-width: 1200px; margin: 0 auto; width: 100%;">
+    <!-- Conteúdo Principal -->
+    <div class="main-content w3-container w3-padding-24" style="max-width: 1200px; margin: 0 auto; width: 100%;">
 
         <!-- Alertas de Feedback -->
         <?= view('components/alerts') ?>
@@ -72,7 +83,10 @@
             <!-- Barra de Navegação das Abas -->
             <div class="w3-bar w3-border-bottom w3-margin-bottom">
                 <button id="btn-tab-pendentes" class="w3-bar-item w3-button tab-btn w3-active-tab w3-round-large w3-margin-right" onclick="openAdminTab(event, 'content-pendentes', '#content-pendentes')">
-                    <i class="bi bi-person-check me-1"></i> Aprov. Profissionais (<?= count($profissionaisPendentes ?? []) ?>)
+                    <i class="bi bi-person-check me-1"></i> Aprov. Pendentes (<?= count($profissionaisPendentes ?? []) ?>)
+                </button>
+                <button id="btn-tab-profissionais" class="w3-bar-item w3-button tab-btn w3-round-large w3-margin-right" onclick="openAdminTab(event, 'content-profissionais', '#content-profissionais')">
+                    <i class="bi bi-person-badge me-1"></i> Profissionais
                 </button>
                 <button id="btn-tab-usuarios" class="w3-bar-item w3-button tab-btn w3-round-large w3-margin-right" onclick="openAdminTab(event, 'content-usuarios', '#content-usuarios')">
                     <i class="bi bi-people me-1"></i> Usuários
@@ -85,17 +99,22 @@
             <!-- Conteúdo das Abas -->
             <div id="admin-tabContent">
 
-                <!-- Aba 1: Profissionais Pendentes -->
+                <!-- Aba 1: Profissionais Pendentes de Análise -->
                 <div id="content-pendentes" class="tab-content-item" style="display: block;">
                     <?= view('admin/components/tab_pendentes') ?>
                 </div>
 
-                <!-- Aba 2: Lista de Usuários -->
+                <!-- Aba 2: Gestão Geral de Profissionais -->
+                <div id="content-profissionais" class="tab-content-item">
+                    <?= view('admin/components/tab_profissionais') ?>
+                </div>
+
+                <!-- Aba 3: Lista de Usuários/Clientes -->
                 <div id="content-usuarios" class="tab-content-item">
                     <?= view('admin/components/tab_usuarios') ?>
                 </div>
 
-                <!-- Aba 3: Cadastro de Categorias -->
+                <!-- Aba 4: Cadastro de Categorias -->
                 <div id="content-categorias" class="tab-content-item">
                     <?= view('admin/components/tab_categorias') ?>
                 </div>
@@ -104,7 +123,7 @@
         </div>
     </div>
 
-    <!-- Rodapé -->
+    <!-- Rodapé Reutilizado -->
     <?= view('components/footer') ?>
 
     <script>
@@ -135,22 +154,32 @@
 
             let targetBtn = null;
 
-            // 1. PRIORIDADE MÁXIMA: Paginação/Filtros explícitos de USUÁRIOS
-            if (urlParams.has('page_usuarios') || urlParams.has('busca_nome') || urlParams.has('busca_email') || urlParams.has('busca_status')) {
+            // 1. Prioridade: Paginação ou Filtro de PROFISSIONAIS
+            if (urlParams.has('page_profissionais') || urlParams.has('busca_prof_nome') || urlParams.has('busca_prof_categoria') || urlParams.has('busca_prof_status')) {
+                targetBtn = document.getElementById('btn-tab-profissionais');
+            }
+            // 2. Paginação de PENDENTES
+            else if (urlParams.has('page_pendentes')) {
+                targetBtn = document.getElementById('btn-tab-pendentes');
+            }
+            // 3. Paginação ou Filtro de USUÁRIOS
+            else if (urlParams.has('page_usuarios') || urlParams.has('busca_nome') || urlParams.has('busca_email') || urlParams.has('busca_status')) {
                 targetBtn = document.getElementById('btn-tab-usuarios');
             }
-            // 2. Paginação/Filtros explícitos de CATEGORIAS
+            // 4. Paginação ou Filtro de CATEGORIAS
             else if (urlParams.has('page_categorias') || urlParams.has('busca_categoria')) {
                 targetBtn = document.getElementById('btn-tab-categorias');
             }
-            // 3. Fallback pela Hash da URL
-            else if (hash === '#content-usuarios') {
+            // 5. Fallbacks pelas Hashes da URL (#content-profissionais, etc.)
+            else if (hash.includes('#content-profissionais')) {
+                targetBtn = document.getElementById('btn-tab-profissionais');
+            } else if (hash.includes('#content-usuarios')) {
                 targetBtn = document.getElementById('btn-tab-usuarios');
-            } else if (hash === '#content-categorias') {
+            } else if (hash.includes('#content-categorias')) {
                 targetBtn = document.getElementById('btn-tab-categorias');
             }
 
-            // Ativa a aba correta
+            // Se encontrou a aba correspondente, dispara o clique para ativá-la
             if (targetBtn) {
                 targetBtn.click();
             }

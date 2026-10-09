@@ -14,6 +14,7 @@
                     <th>Nome</th>
                     <th>E-mail</th>
                     <th>Cidade / UF</th>
+                    <th>Status</th>
                     <th class="w3-right-align">Ações</th>
                 </tr>
             </thead>
@@ -27,6 +28,7 @@
                         <td><strong><?= esc($prof['nome'] ?? 'Sem nome') ?></strong></td>
                         <td><?= esc($prof['email'] ?? '-') ?></td>
                         <td><?= esc(($prof['cidade'] ?? '-') . ' / ' . ($prof['estado'] ?? '-')) ?></td>
+                        <td><?= esc($prof['status'] ?? '-') ?></td>
                         <td class="w3-right-align">
                             <!-- Botão Aprovar -->
                             <a href="<?= site_url('admin/aprovarProfissional/' . $profId) ?>" class="w3-button w3-green w3-round w3-tiny">
@@ -76,4 +78,11 @@
             </tbody>
         </table>
     </div>
+
+    <!-- Paginação de Pendentes -->
+    <?php if (!empty($pager_pendentes)): ?>
+        <div class="w3-margin-top w3-center">
+            <?= $pager_pendentes->only(['page_pendentes'])->links('pendentes', 'w3_pagination') ?>
+        </div>
+    <?php endif; ?>
 <?php endif; ?>

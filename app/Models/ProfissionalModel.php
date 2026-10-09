@@ -11,7 +11,7 @@ class ProfissionalModel extends Model
     protected $useAutoIncrement = false;        // Desativa auto incremento na PK
     protected $returnType       = 'array';
 
-    // ADICIONADOS: 'observacao_admin' e 'bloqueado_ate'
+    // Campos permitidos para atualização
     protected $allowedFields    = [
         'usuario_id', 
         'descricaoPerfil', 
@@ -61,14 +61,14 @@ class ProfissionalModel extends Model
     }
 
     /**
-     * Busca os profissionais com status 'em_analise' ou 'pendente' unindo dados da tabela usuario
+     * Busca os profissionais pendentes de aprovação com paginação
      */
-    public function getPendentes()
+    public function getPendentesPaginados(int $perPage = 5, int $page = 1)
     {
         return $this->select('profissional.*, usuario.id as usuario_id, usuario.nome, usuario.email, usuario.cidade, usuario.estado')
                     ->join('usuario', 'usuario.id = profissional.usuario_id')
-                    ->whereIn('profissional.status', ['em_analise', 'pendente'])
-                    ->findAll();
+                    ->whereIn('profissional.status', ['em_analise', 'pendente', 'ajustes_solicitados'])
+                    ->paginate($perPage, 'pendentes', $page);
     }
 
     /**
@@ -84,5 +84,63 @@ class ProfissionalModel extends Model
         return $this->where('usuario_id', $usuarioId)
                     ->set($dados)
                     ->update();
+    }
+
+    /**
+     * Busca os profissionais filtrados e paginados para a aba de gestão geral
+     */
+    public function getProfissionaisPaginados(?string $nome = null, ?int $categoriaId = null, ?string $status = null, int $perPage = 5, int $page = 1)
+    {
+        $builder = $this->select('
+                profissional.*, 
+                usuario.nome, 
+                usuario.email, 
+                usuario.cidade, 
+                usuario.estado,
+                usuario.status as status_usuario
+            ')
+            ->join('usuario', 'usuario.id = profissional.usuario_id');
+
+        // Filtro por Nome ou E-mail
+        if (!empty($nome)) {
+            $builder->groupStart()
+                    ->like('usuario.nome', $nome)
+                    ->orLike('usuario.email', $nome)
+                    ->groupEnd();
+        }
+
+        // Filtro por Status do Perfil
+        if (!empty($status)) {
+            $builder->where('profissional.status', $status);
+        }
+
+        // Filtro por Categoria
+        if (!empty($categoriaId)) {
+            $builder->whereIn('profissional.usuario_id', function($subQuery) use ($categoriaId) {
+                return $subQuery->select('usuario_id')
+                                ->from('profissional_categorias')
+                                ->where('categoria_id', $categoriaId);
+            });
+        }
+
+        // Executa a paginação do CodeIgniter
+        $profissionais = $builder->paginate($perPage, 'profissionais', $page);
+
+        // Anexa as categorias a cada profissional paginado
+        if (!empty($profissionais)) {
+            $db = \Config\Database::connect();
+            foreach ($profissionais as &$prof) {
+                $cats = $db->table('profissional_categorias')
+                           ->select('categorias.categoria')
+                           ->join('categorias', 'categorias.id = profissional_categorias.categoria_id')
+                           ->where('profissional_categorias.usuario_id', $prof['usuario_id'])
+                           ->get()
+                           ->getResultArray();
+
+                $prof['categorias_list'] = array_column($cats, 'categoria');
+            }
+        }
+
+        return $profissionais;
     }
 }

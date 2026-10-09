@@ -95,6 +95,14 @@
                             <?php endif; ?>
                         </td>
                         <td class="w3-right-align">
+                            <!-- Botão de Relatório/Dossiê (Pronto para implementação futura) -->
+                            <button type="button" 
+                                    class="w3-button w3-light-grey w3-text-grey w3-hover-blue w3-round w3-tiny w3-margin-right" 
+                                    title="Relatório/Dossiê do Cliente" 
+                                    onclick="alert('O módulo de relatórios e histórico estará disponível em breve.')">
+                                <i class="bi bi-file-earmark-text"></i> Dossiê
+                            </button>
+
                             <?php if ($isEuMesmo): ?>
                                 <!-- Proteção contra auto-suspensão -->
                                 <button type="button" class="w3-button w3-grey w3-round w3-tiny" disabled title="Não é possível suspender a própria conta logada.">
@@ -125,11 +133,10 @@
     <?php endif; ?>
 <?php endif; ?>
 
-<!-- MODAL ÚNICO DE SUSPENSÃO DE USUÁRIO (Fora da tabela/loop) -->
+<!-- MODAL ÚNICO DE SUSPENSÃO DE USUÁRIO -->
 <div id="modalSuspenderUsuario" class="w3-modal" style="padding-top: 50px;">
     <div class="w3-modal-content w3-card-4 w3-animate-top w3-round-large" style="max-width: 520px; overflow: hidden; border: none;">
 
-        <!-- Cabeçalho Moderno com Tag de Alerta -->
         <header class="w3-container w3-white w3-border-bottom" style="padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;">
             <div style="display: flex; align-items: center; gap: 12px;">
                 <div style="background-color: #fee2e2; color: #dc2626; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">
@@ -143,16 +150,13 @@
             <span onclick="fecharModalSuspender()" class="w3-button w3-transparent w3-hover-light-grey w3-round-circle" style="font-size: 20px; line-height: 1; padding: 6px 12px;">&times;</span>
         </header>
 
-        <!-- Form e Conteúdo -->
         <form id="formSuspenderUsuario" action="" method="post" class="w3-container" style="padding: 24px;">
             <?= csrf_field() ?>
 
-            <!-- Caixinha com aviso/info do usuário selecionado -->
             <div class="w3-padding w3-round-large w3-margin-bottom" style="background-color: #f8fafc; border: 1px solid #e2e8f0; font-size: 0.9rem; color: #475569;">
                 A suspensão impedirá o usuário <strong id="modal_usuario_nome" class="w3-text-dark-grey">...</strong> de realizar novas solicitações no sistema.
             </div>
 
-            <!-- Campo Motivo -->
             <div class="w3-margin-bottom">
                 <label for="motivo_bloqueio" class="w3-text-dark-grey w3-small w3-bold" style="display: block; margin-bottom: 6px;">
                     Motivo da Suspensão <span style="color: #dc2626;">*</span>
@@ -166,7 +170,6 @@
                           required></textarea>
             </div>
 
-            <!-- Campo Data/Hora de Bloqueio -->
             <div class="w3-margin-bottom">
                 <label for="bloqueado_ate" class="w3-text-dark-grey w3-small w3-bold" style="display: block; margin-bottom: 6px;">
                     Bloquear Até <span class="w3-text-grey w3-normal">(Opcional)</span>
@@ -179,7 +182,6 @@
                 <span class="w3-tiny w3-text-grey" style="display: block; margin-top: 4px;">Deixe em branco para aplicar bloqueio por tempo indeterminado.</span>
             </div>
 
-            <!-- Rodapé e Botões de Ação -->
             <div class="w3-margin-top" style="display: flex; justify-content: flex-end; gap: 10px; padding-top: 12px; border-top: 1px solid #f1f5f9;">
                 <button type="button" onclick="fecharModalSuspender()" class="w3-button w3-light-grey w3-hover-grey w3-round-large w3-bold" style="padding: 10px 20px;">
                     Cancelar
@@ -194,18 +196,13 @@
 
 <script>
     function abrirModalSuspender(id, nome) {
-        // Define dinamicamente o action do formulário apontando para a rota de suspensão
         const form = document.getElementById('formSuspenderUsuario');
         form.action = "<?= site_url('admin/suspenderUsuario') ?>/" + id;
 
-        // Atualiza o nome do usuário no alerta do modal
         document.getElementById('modal_usuario_nome').innerText = nome;
-
-        // Limpa formulário
         document.getElementById('motivo_bloqueio').value = '';
         document.getElementById('bloqueado_ate').value = '';
 
-        // Exibe o modal
         document.getElementById('modalSuspenderUsuario').style.display = 'block';
     }
 

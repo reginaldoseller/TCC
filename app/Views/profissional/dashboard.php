@@ -5,14 +5,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel do Profissional - GetNinjas</title>
+
+    <!-- Bootstrap 5 & Ícones -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
     <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+
         body {
             background-color: #f8f9fa;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        /* Container central flexível que empurra o rodapé para a base */
+        .main-content {
+            flex: 1 0 auto;
         }
 
         .card-dash {
@@ -30,20 +44,18 @@
             color: #555;
             font-weight: 500;
         }
-
-        .footer-custom {
-            margin-top: auto;
-            background-color: #ffffff;
-            border-top: 1px solid #e9ecef;
-        }
     </style>
 </head>
 
 <body>
 
-    <div class="container py-4">
+    <!-- Header / Navbar Global Reutilizada -->
+    <?= view('components/navbar') ?>
 
-        <!-- Cabeçalho com saudações e troca de perfis -->
+    <!-- Conteúdo Principal -->
+    <div class="main-content container py-4">
+
+        <!-- Cabeçalho com saudações e ações de perfil -->
         <?= view('profissional/components/cabecalho') ?>
 
         <!-- Alertas Globais (Flashdata) -->
