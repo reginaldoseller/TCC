@@ -11,21 +11,49 @@ class AdminController extends BaseController
 {
     public function dashboard()
     {
-        // Captura os parâmetros dos filtros GET (Usuários)
-        $buscaNome    = $this->request->getGet('busca_nome');
-        $buscaEmail   = $this->request->getGet('busca_email');
-        $buscaStatus  = $this->request->getGet('busca_status');
-        $pageUsuarios = (int) ($this->request->getGet('page_usuarios') ?? 1);
+        // =========================================================================
+        // 1. FILTROS E PARÂMETROS GET
+        // =========================================================================
 
-        // Captura o parâmetro do filtro GET (Categorias)
-        $buscaCategoria  = $this->request->getGet('busca_categoria');
-        $pageCategorias = (int) ($this->request->getGet('page_categorias') ?? 1);
+        // Páginas para Paginação
+        $pagePendentes     = (int) ($this->request->getGet('page_pendentes') ?? 1);
+        $pageUsuarios      = (int) ($this->request->getGet('page_usuarios') ?? 1);
+        $pageCategorias    = (int) ($this->request->getGet('page_categorias') ?? 1);
+        $pageProfissionais = (int) ($this->request->getGet('page_profissionais') ?? 1);
 
-        // Instancia os modelos
-        $usuarioModel   = new \App\Models\UsuarioModel();
-        $categoriaModel = new \App\Models\CategoriaModel();
+        // Filtros de Usuários
+        $buscaNome   = $this->request->getGet('busca_nome');
+        $buscaEmail  = $this->request->getGet('busca_email');
+        $buscaStatus = $this->request->getGet('busca_status');
 
-        // --- FILTROS E PAGINAÇÃO DE USUÁRIOS ---
+        // Filtros de Categorias
+        $buscaCategoria = $this->request->getGet('busca_categoria');
+
+        // Filtros de Profissionais (Aba Geral)
+        $buscaProfNome      = $this->request->getGet('busca_prof_nome');
+        $buscaProfCategoria = $this->request->getGet('busca_prof_categoria');
+        $buscaProfStatus    = $this->request->getGet('busca_prof_status');
+
+
+        // =========================================================================
+        // 2. INSTÂNCIA DOS MODELOS
+        // =========================================================================
+        $usuarioModel      = new \App\Models\UsuarioModel();
+        $categoriaModel    = new \App\Models\CategoriaModel();
+        $profissionalModel = new \App\Models\ProfissionalModel();
+
+
+        // =========================================================================
+        // 3. BLOCO: PROFISSIONAIS PENDENTES DE ANÁLISE (PAGINADO)
+        // =========================================================================
+        $data['profissionaisPendentes'] = $profissionalModel->getPendentesPaginados(5, $pagePendentes);
+        $profissionalModel->pager->setPath('admin/dashboard');
+        $data['pager_pendentes'] = $profissionalModel->pager;
+
+
+        // =========================================================================
+        // 4. BLOCO: FILTROS E PAGINAÇÃO DE USUÁRIOS
+        // =========================================================================
         if (!empty($buscaNome)) {
             $usuarioModel->like('nome', $buscaNome);
         }
@@ -42,20 +70,18 @@ class AdminController extends BaseController
             }
         }
 
-
-        // 1. Paginação dos Usuários
         $data['usuarios'] = $usuarioModel->paginate(5, 'usuarios', $pageUsuarios);
         $usuarioModel->pager->setPath('admin/dashboard');
         $data['pager_usuarios'] = $usuarioModel->pager;
 
 
-
-        // --- FILTROS E PAGINAÇÃO DE CATEGORIAS ---
+        // =========================================================================
+        // 5. BLOCO: FILTROS E PAGINAÇÃO DE CATEGORIAS
+        // =========================================================================
         if (!empty($buscaCategoria)) {
             $categoriaModel->like('categoria', $buscaCategoria);
         }
 
-        // 2. Paginação das Categorias
         $data['categorias'] = $categoriaModel
             ->orderBy('categoria', 'ASC')
             ->paginate(5, 'categorias', $pageCategorias);
@@ -63,7 +89,51 @@ class AdminController extends BaseController
         $categoriaModel->pager->setPath('admin/dashboard');
         $data['pager_categorias'] = $categoriaModel->pager;
 
+
+        // =========================================================================
+        // 6. BLOCO: FILTROS E PAGINAÇÃO DE PROFISSIONAIS (ABA GERAL)
+        // =========================================================================
+
+        // Lista de categorias para o <select> do filtro de profissionais
+        $data['todas_categorias'] = $categoriaModel->orderBy('categoria', 'ASC')->findAll();
+
+        // Busca os profissionais paginados
+        $data['profissionais'] = $profissionalModel->getProfissionaisPaginados(
+            $buscaProfNome,
+            $buscaProfCategoria,
+            $buscaProfStatus,
+            5,                  // Limite por página
+            $pageProfissionais  // Número da página atual
+        );
+
+        // Configura o Pager para os profissionais
+        $profissionalModel->pager->setPath('admin/dashboard');
+        $data['pager_profissionais'] = $profissionalModel->pager;
+
+
+        // =========================================================================
+        // 7. RETORNO PARA A VIEW
+        // =========================================================================
         return view('admin/dashboard', $data);
+    }
+
+    // --- MODERAÇÃO DE PROFISSIONAIS ---
+
+    // Aprova o cadastro/perfil do profissional
+    public function aprovarProfissional($usuarioId)
+    {
+        $profissionalModel = new ProfissionalModel();
+
+        // Atualiza o status do profissional para 'ativo' e limpa observações do admin
+        $sucesso = $profissionalModel->atualizarStatus($usuarioId, 'ativo', 'Perfil aprovado pelo administrador.');
+
+        if ($sucesso) {
+            return redirect()->to(site_url('admin/dashboard#content-profissionais'))
+                ->with('sucesso', 'Profissional aprovado com sucesso!');
+        }
+
+        return redirect()->to(site_url('admin/dashboard#content-profissionais'))
+            ->with('erro', 'Não foi possível aprovar o profissional.');
     }
 
     // Solicita correções/ajustes de dados ao profissional
@@ -71,22 +141,20 @@ class AdminController extends BaseController
     {
         $profissionalModel = new ProfissionalModel();
 
-        // 1. Captura o texto enviado pelo modal no campo name="observacao"
         $observacao = $this->request->getPost('observacao');
 
         if (empty($observacao)) {
             return redirect()->back()->with('erro', 'É necessário preencher a orientação para o profissional.');
         }
 
-        // 2. Monta os dados de atualização
         $dadosAtualizacao = [
             'status'           => 'ajustes_solicitados',
             'observacao_admin' => $observacao,
         ];
 
-        // 3. Executa a atualização na base de dados
         if ($profissionalModel->update($id, $dadosAtualizacao)) {
-            return redirect()->to(site_url('admin/dashboard'))->with('sucesso', 'Solicitação de ajustes enviada com sucesso!');
+            return redirect()->to(site_url('admin/dashboard#content-profissionais'))
+                ->with('sucesso', 'Solicitação de ajustes enviada com sucesso!');
         }
 
         return redirect()->back()->with('erro', 'Não foi possível registrar os ajustes.');
@@ -105,9 +173,7 @@ class AdminController extends BaseController
             'bloqueado_ate'    => $bloqueadoAte
         ]);
 
-        // TODO: Enviar e-mail institucional de suspensão temporária de adesões
-
-        return redirect()->to(site_url('admin/dashboard'))
+        return redirect()->to(site_url('admin/dashboard#content-profissionais'))
             ->with('sucesso', 'Adesão do profissional suspensa temporariamente.');
     }
 
@@ -136,10 +202,17 @@ class AdminController extends BaseController
         $motivo       = trim($this->request->getPost('motivo_bloqueio'));
         $bloqueadoAte = $this->request->getPost('bloqueado_ate');
 
-        // Formata a data vinda do input datetime-local para o padrão do MySQL
-        $bloqueadoAteFormatado = !empty($bloqueadoAte) ? date('Y-m-d H:i:s', strtotime($bloqueadoAte)) : null;
+        $bloqueadoAteFormatado = null;
+        if (!empty($bloqueadoAte)) {
+            $dataLimpa = str_replace('T', ' ', $bloqueadoAte);
+            if (strlen($dataLimpa) === 10) {
+                $dataLimpa .= ' 23:59:59';
+            }
+            $timestamp = strtotime($dataLimpa);
+            $bloqueadoAteFormatado = $timestamp ? date('Y-m-d H:i:s', $timestamp) : null;
+        }
 
-        // 4. Prepara os dados para salvamento
+        // 4. Prepara os dados para salvamento na tabela usuario
         $dadosAtualizacao = [
             'status'          => 'suspenso',
             'motivo_bloqueio' => $motivo,
@@ -148,6 +221,22 @@ class AdminController extends BaseController
 
         // 5. Executa o update na tabela 'usuario'
         if ($usuarioModel->update($id, $dadosAtualizacao)) {
+
+            // ##### Atualiza o perfil profissional usando a chave correta (usuario_id)
+            $profissionalModel = new \App\Models\ProfissionalModel();
+            $profissional = $profissionalModel->where('usuario_id', $id)->first();
+
+            if ($profissional) {
+                // Em vez de $profissionalModel->update($id, ...), usamos o método seguro com where()
+                // para evitar conflitos com a chave primária não autoincrementada do CodeIgniter.
+                $profissionalModel->where('usuario_id', $id)->set([
+                    'status'           => 'suspenso',
+                    'observacao_admin' => !empty($motivo) ? 'Suspenso pelo admin: ' . $motivo : 'O usuário foi suspenso pelo administrador.',
+                    'bloqueado_ate'    => $bloqueadoAteFormatado,
+                ])->update();
+            }
+            // ############
+
             return redirect()->to(site_url('admin/dashboard#content-usuarios'))
                 ->with('sucesso', 'Usuário suspenso com sucesso!');
         }
@@ -169,7 +258,7 @@ class AdminController extends BaseController
             'bloqueado_ate'   => null
         ]);
 
-        return redirect()->to(site_url('admin/dashboard'))
+        return redirect()->to(site_url('admin/dashboard#content-usuarios'))
             ->with('sucesso', 'Usuário banido permanentemente da plataforma.');
     }
 
@@ -188,11 +277,6 @@ class AdminController extends BaseController
             ->with('sucesso', 'Conta do usuário reativada com sucesso.');
     }
 
-    // --- GESTÃO DE CATEGORIAS ---
-
-    // --- GESTÃO DE CATEGORIAS ---
-
-    // Método ajustado para bater certo com a rota /admin/cadastrarCategoria
     // --- GESTÃO DE CATEGORIAS ---
 
     public function cadastrarCategoria()

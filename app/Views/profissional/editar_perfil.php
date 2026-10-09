@@ -1,3 +1,15 @@
+<?php
+$perfilAtivo = session()->get('perfil_ativo') ?? 'Cliente';
+$isAdmin     = (bool) session()->get('is_admin');
+
+// Define dinamicamente para qual painel o botão "Voltar" deve apontar
+$dashboardUrl = site_url('cliente/dashboard');
+if ($perfilAtivo === 'Administrador' || $isAdmin && $perfilAtivo === 'Administrador') {
+    $dashboardUrl = site_url('admin/dashboard');
+} elseif ($perfilAtivo === 'Profissional' || session()->get('tipo_perfil') === 'Profissional') {
+    $dashboardUrl = site_url('profissional/dashboard');
+}
+?>
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -14,9 +26,16 @@
 
     <!-- Topo -->
     <div class="w3-bar w3-dark-grey w3-padding w3-card">
-        <div class="w3-content" style="max-width:1200px">
-            <a href="<?= base_url('/') ?>" class="w3-bar-item w3-button w3-large w3-bold">GetNinjas</a>
-            <a href="<?= base_url('meu-perfil') ?>" class="w3-bar-item w3-button w3-right"><i class="fa-solid fa-user"></i> Meu Perfil Geral</a>
+        <div class="w3-content" style="max-width:1200px; display: flex; align-items: center; justify-content: space-between;">
+            <a href="<?= $dashboardUrl ?>" class="w3-bar-item w3-button w3-large w3-bold" style="text-decoration: none;">GetNinjas</a>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <a href="<?= $dashboardUrl ?>" class="w3-button w3-light-grey w3-round w3-small" style="text-decoration: none;">
+                    <i class="fa-solid fa-arrow-left"></i> Voltar ao Painel
+                </a>
+                <a href="<?= base_url('meu-perfil') ?>" class="w3-button w3-dark-grey w3-border w3-border-white w3-round w3-small" style="text-decoration: none;">
+                    <i class="fa-solid fa-user"></i> Meu Perfil Geral
+                </a>
+            </div>
         </div>
     </div>
 
@@ -60,7 +79,7 @@
                         </div>
                         <div class="w3-half w3-margin-top">
                             <label class="w3-text-dark-grey"><b>WhatsApp Comercial</b></label>
-                            <input class="w3-input w3-border w3-round" type="text" name="whatsapp" value="<?= old('whatsapp', $links['whatsapp'] ?? '') ?>" placeholder="(00) 00000-0000">
+                            <input class="w3-input w3-border w3-round" type="text" id="whatsapp" name="whatsapp" value="<?= old('whatsapp', $links['whatsapp'] ?? '') ?>" placeholder="(00) 00000-0000" maxlength="15">
                         </div>
                     </div>
                 </div>
@@ -95,14 +114,42 @@
                 </div>
             </div>
 
-            <!-- Botão Salvar -->
-            <div class="w3-margin-top w3-margin-bottom">
-                <button type="submit" class="w3-button w3-blue w3-round-large w3-large w3-card w3-right">
+            <!-- Botões de Ação Rodapé -->
+            <div class="w3-margin-top w3-margin-bottom" style="display: flex; justify-content: space-between; align-items: center;">
+                <a href="<?= $dashboardUrl ?>" class="w3-button w3-light-grey w3-border w3-round-large w3-large w3-card">
+                    <i class="fa-solid fa-arrow-left w3-margin-right"></i> Cancelar e Voltar
+                </a>
+                <button type="submit" class="w3-button w3-blue w3-round-large w3-large w3-card">
                     <i class="fa-solid fa-floppy-disk w3-margin-right"></i> Salvar Perfil Profissional
                 </button>
             </div>
         </form>
     </div>
+
+    <!-- Script de Máscara para Telefone / WhatsApp -->
+    <script>
+    document.getElementById('whatsapp').addEventListener('input', function (e) {
+        let value = e.target.value.replace(/\D/g, ''); // Remove tudo que não for dígito
+        if (value.length > 11) {
+            value = value.substring(0, 11); // Limita a 11 dígitos
+        }
+        
+        // Aplica a formatação de acordo com o tamanho
+        if (value.length > 10) {
+            // Celular: (00) 00000-0000
+            value = value.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3');
+        } else if (value.length > 6) {
+            // Fixo ou Parcial: (00) 0000-0000
+            value = value.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3');
+        } else if (value.length > 2) {
+            value = value.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
+        } else if (value.length > 0) {
+            value = value.replace(/^(\d*)/, '($1');
+        }
+        
+        e.target.value = value;
+    });
+    </script>
 
 </body>
 </html>
