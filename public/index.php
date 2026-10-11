@@ -1,8 +1,16 @@
 <?php
 
+if (!class_exists('Locale')) {
+    class Locale {
+        public static function setDefault($locale) { return true; }
+        public static function getDefault() { return 'pt_BR'; }
+    }
+}
+
 use CodeIgniter\Boot;
 use Config\Paths;
-
+// Forca a exibicao de erros para descobrirmos o problema
+define('ENVIRONMENT', 'development');
 /*
  *---------------------------------------------------------------
  * CHECK PHP VERSION

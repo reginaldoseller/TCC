@@ -5,6 +5,7 @@ use App\Controllers\Home;
 use App\Controllers\UsuarioController;
 use App\Controllers\ProfissionalController;
 use App\Controllers\AdminController;
+use App\Controllers\BuscaController;
 
 /**
  * @var RouteCollection $routes
@@ -26,7 +27,7 @@ $routes->post('esqueci-senha/enviar', 'UsuarioController::processarEsqueciSenha'
 $routes->get('redefinir-senha/(:any)', 'UsuarioController::redefinirSenha/$1');
 $routes->post('redefinir-senha/salvar', 'UsuarioController::salvarNovaSenha');
 
-// Rotas de Cadastro de Usuário
+// Rotas de Cadastro de Utilizador
 $routes->get('usuario/cadastrar', [UsuarioController::class, 'novo']);
 $routes->post('usuario/criar', [UsuarioController::class, 'criar']);
 
@@ -55,7 +56,7 @@ $routes->get('usuario/mudarParaAdmin', [UsuarioController::class, 'mudarParaAdmi
 // --- Rotas Administrativas ---
 $routes->group('admin', function($routes) {
     $routes->get('dashboard', 'AdminController::dashboard');
-    
+
     // Rotas de Aprovação / Gestão de Profissionais
     $routes->get('aprovarProfissional/(:num)', 'AdminController::aprovarProfissional/$1');
     $routes->get('profissional/aprovar/(:num)', 'AdminController::aprovarProfissional/$1');
@@ -65,19 +66,22 @@ $routes->group('admin', function($routes) {
 
     $routes->get('suspenderProfissional/(:num)', 'AdminController::suspenderProfissional/$1');
     $routes->get('profissional/suspender/(:num)', 'AdminController::suspenderProfissional/$1');
-    
-    // Rotas de Usuários
+
+    // Rotas de Utilizadores
     $routes->post('suspenderUsuario/(:num)', 'AdminController::suspenderUsuario/$1');
     $routes->post('usuario/suspender/(:num)', 'AdminController::suspenderUsuario/$1');
-    
+
     $routes->get('reativarUsuario/(:num)', 'AdminController::reativarUsuario/$1');
     $routes->get('usuario/reativar/(:num)', 'AdminController::reativarUsuario/$1');
 
-    // Rotas de Categorias (Corrigidas para aceitar tanto /cadastrarCategoria quanto /criarCategoria e /atualizarCategoria)
+    // Rotas de Categorias
     $routes->post('cadastrarCategoria', 'AdminController::cadastrarCategoria');
     $routes->post('criarCategoria', 'AdminController::cadastrarCategoria');
     $routes->post('categoria/criar', 'AdminController::cadastrarCategoria');
-    
+
     $routes->post('atualizarCategoria', 'AdminController::atualizarCategoria');
     $routes->post('categoria/atualizar', 'AdminController::atualizarCategoria');
 });
+
+// Rota de Busca (Fora do grupo admin)
+$routes->get('busca', 'BuscaController::index');
