@@ -33,6 +33,7 @@ class AdminController extends BaseController
         $buscaProfNome      = $this->request->getGet('busca_prof_nome');
         $buscaProfCategoria = $this->request->getGet('busca_prof_categoria');
         $buscaProfStatus    = $this->request->getGet('busca_prof_status');
+        $buscaProfCategoria = !empty($buscaProfCategoria) ? (int) $buscaProfCategoria : null;
 
 
         // =========================================================================
@@ -41,6 +42,20 @@ class AdminController extends BaseController
         $usuarioModel      = new \App\Models\UsuarioModel();
         $categoriaModel    = new \App\Models\CategoriaModel();
         $profissionalModel = new \App\Models\ProfissionalModel();
+
+        // =========================================================================
+        // CONTAGEM GERAL DE REGISTROS
+        // =========================================================================
+
+        // Contagens reais absolutas para os cards do topo (sem interferência da paginação)
+        $data['totalPendentes'] = $profissionalModel
+            ->whereIn('status', ['em_analise', 'pendente', 'ajustes_solicitados'])
+            ->countAllResults();
+
+        $data['totalUsuarios'] = $usuarioModel->countAll();
+
+        $data['totalCategorias'] = $categoriaModel->countAll();
+        $data['totalProfissionais'] = $profissionalModel->countAll();
 
 
         // =========================================================================
@@ -97,8 +112,11 @@ class AdminController extends BaseController
         // Lista de categorias para o <select> do filtro de profissionais
         $data['todas_categorias'] = $categoriaModel->orderBy('categoria', 'ASC')->findAll();
 
+        // Instancia uma NOVA referência da model para isolar o Query Builder da aba geral
+        $profissionalModelGeral = new \App\Models\ProfissionalModel();
+
         // Busca os profissionais paginados
-        $data['profissionais'] = $profissionalModel->getProfissionaisPaginados(
+        $data['profissionais'] = $profissionalModelGeral->getProfissionaisPaginados(
             $buscaProfNome,
             $buscaProfCategoria,
             $buscaProfStatus,
@@ -106,9 +124,9 @@ class AdminController extends BaseController
             $pageProfissionais  // Número da página atual
         );
 
-        // Configura o Pager para os profissionais
-        $profissionalModel->pager->setPath('admin/dashboard');
-        $data['pager_profissionais'] = $profissionalModel->pager;
+        // Configura o Pager para os profissionais usando a nova instância
+        $profissionalModelGeral->pager->setPath('admin/dashboard');
+        $data['pager_profissionais'] = $profissionalModelGeral->pager;
 
 
         // =========================================================================
@@ -272,6 +290,21 @@ class AdminController extends BaseController
             'motivo_bloqueio' => null,
             'bloqueado_ate'   => null
         ]);
+
+        // ##### Atualiza o perfil profissional usando a chave correta (usuario_id)
+        $profissionalModel = new \App\Models\ProfissionalModel();
+        $profissional = $profissionalModel->where('usuario_id', $id)->first();
+
+        if ($profissional) {
+            // Em vez de $profissionalModel->update($id, ...), usamos o método seguro com where()
+            // para evitar conflitos com a chave primária não autoincrementada do CodeIgniter.
+            $profissionalModel->where('usuario_id', $id)->set([
+                'status'           => 'ativo',
+                'observacao_admin' => NULL,
+                'bloqueado_ate'    => NULL,
+            ])->update();
+        }
+        // ############
 
         return redirect()->to(site_url('admin/dashboard#content-usuarios'))
             ->with('sucesso', 'Conta do usuário reativada com sucesso.');

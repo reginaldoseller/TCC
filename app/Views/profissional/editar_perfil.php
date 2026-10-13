@@ -4,7 +4,7 @@ $isAdmin     = (bool) session()->get('is_admin');
 
 // Define dinamicamente para qual painel o botão "Voltar" deve apontar
 $dashboardUrl = site_url('cliente/dashboard');
-if ($perfilAtivo === 'Administrador' || $isAdmin && $perfilAtivo === 'Administrador') {
+if ($perfilAtivo === 'Administrador' || ($isAdmin && $perfilAtivo === 'Administrador')) {
     $dashboardUrl = site_url('admin/dashboard');
 } elseif ($perfilAtivo === 'Profissional' || session()->get('tipo_perfil') === 'Profissional') {
     $dashboardUrl = site_url('profissional/dashboard');
@@ -42,7 +42,7 @@ if ($perfilAtivo === 'Administrador' || $isAdmin && $perfilAtivo === 'Administra
     <div class="w3-content w3-padding-large" style="max-width:800px; margin-top:20px;">
         
         <h2 class="w3-bold"><i class="fa-solid fa-briefcase w3-text-blue"></i> Perfil Profissional</h2>
-        <p class="w3-text-gray">Configure a sua apresentação comercial para os clientes da plataforma.</p>
+        <p class="w3-text-gray">Configure a sua apresentação comercial e a sua região de atendimento para os clientes.</p>
 
         <!-- Mensagens -->
         <?php if (session()->getFlashdata('sucesso')) : ?>
@@ -75,7 +75,7 @@ if ($perfilAtivo === 'Administrador' || $isAdmin && $perfilAtivo === 'Administra
                     <div class="w3-row-padding">
                         <div class="w3-half w3-margin-top">
                             <label class="w3-text-dark-grey"><b>Raio de Atuação (em km)</b></label>
-                            <input class="w3-input w3-border w3-round" type="number" name="raio_atuacao" value="<?= old('raio_atuacao', $profissional['raio_atuacao'] ?? 10) ?>" min="1" max="500" required>
+                            <input class="w3-input w3-border w3-round" type="number" name="raio_atuacao" value="<?= old('raio_atuacao', $profissional['raio_atendimento_km'] ?? 10) ?>" min="1" max="500" required>
                         </div>
                         <div class="w3-half w3-margin-top">
                             <label class="w3-text-dark-grey"><b>WhatsApp Comercial</b></label>
@@ -85,7 +85,46 @@ if ($perfilAtivo === 'Administrador' || $isAdmin && $perfilAtivo === 'Administra
                 </div>
             </div>
 
-            <!-- Bloco 2: Redes Sociais e Portfólio Externo -->
+            <!-- Bloco Novo: Localização Base para Matching -->
+            <div class="w3-card-4 w3-white w3-round-large w3-padding-24 w3-margin-bottom">
+                <div class="w3-container">
+                    <h4 class="w3-bold w3-border-bottom w3-padding-16"><i class="fa-solid fa-location-dot"></i> Região de Atendimento (Geolocalização)</h4>
+                    <p class="w3-small w3-text-grey">Informe o CEP de onde você baseia o seu atendimento. Não armazenamos o número exato do seu endereço para garantir sua privacidade.</p>
+
+                    <div class="w3-row-padding">
+                        <div class="w3-third w3-margin-top">
+                            <label class="w3-text-dark-grey"><b>CEP Base</b></label>
+                            <input class="w3-input w3-border w3-round" type="text" id="cep" name="cep" value="<?= old('cep', $profissional['cep'] ?? '') ?>" placeholder="00000-000" maxlength="9" required>
+                        </div>
+                        <div class="w3-twothird w3-margin-top">
+                            <label class="w3-text-dark-grey"><b>Bairro</b></label>
+                            <input class="w3-input w3-border w3-round" type="text" id="bairro" name="bairro" value="<?= old('bairro', $profissional['bairro'] ?? '') ?>" readonly required>
+                        </div>
+                    </div>
+
+                    <div class="w3-row-padding w3-margin-top">
+                        <div class="w3-threequarter">
+                            <label class="w3-text-dark-grey"><b>Cidade</b></label>
+                            <input class="w3-input w3-border w3-round" type="text" id="cidade" name="cidade" value="<?= old('cidade', $profissional['cidade'] ?? '') ?>" readonly required>
+                        </div>
+                        <div class="w3-quarter">
+                            <label class="w3-text-dark-grey"><b>Estado (UF)</b></label>
+                            <input class="w3-input w3-border w3-round" type="text" id="estado" name="estado" value="<?= old('estado', $profissional['estado'] ?? '') ?>" readonly required>
+                        </div>
+                    </div>
+
+                    <!-- Opção de Restrição por Cidade -->
+                    <div class="w3-margin-top">
+                        <label>
+                            <input class="w3-check" type="checkbox" name="apenas_mesma_cidade" value="1" <?= old('apenas_mesma_cidade', $profissional['apenas_mesma_cidade'] ?? 0) ? 'checked' : '' ?>>
+                            <b>Restringir atendimento apenas aos limites da minha cidade</b> (Não atender cidades vizinhas, mesmo dentro do raio em km)
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bloco 2: Redes Sociais e Portfólio Externo (Exibido condicionalmente) -->
+            <?php if (!empty($profissional['permite_redes_sociais']) && $profissional['permite_redes_sociais'] == 1) : ?>
             <div class="w3-card-4 w3-white w3-round-large w3-padding-24 w3-margin-bottom">
                 <div class="w3-container">
                     <h4 class="w3-bold w3-border-bottom w3-padding-16"><i class="fa-solid fa-share-nodes"></i> Redes Sociais & Links</h4>
@@ -113,6 +152,7 @@ if ($perfilAtivo === 'Administrador' || $isAdmin && $perfilAtivo === 'Administra
                     </p>
                 </div>
             </div>
+            <?php endif; ?>
 
             <!-- Botões de Ação Rodapé -->
             <div class="w3-margin-top w3-margin-bottom" style="display: flex; justify-content: space-between; align-items: center;">
@@ -126,8 +166,9 @@ if ($perfilAtivo === 'Administrador' || $isAdmin && $perfilAtivo === 'Administra
         </form>
     </div>
 
-    <!-- Script de Máscara para Telefone / WhatsApp -->
+    <!-- Scripts de Máscara e Consulta de CEP via AJAX -->
     <script>
+    // Máscara para WhatsApp
     document.getElementById('whatsapp').addEventListener('input', function (e) {
         let value = e.target.value.replace(/\D/g, ''); // Remove tudo que não for dígito
         if (value.length > 11) {
@@ -136,10 +177,8 @@ if ($perfilAtivo === 'Administrador' || $isAdmin && $perfilAtivo === 'Administra
         
         // Aplica a formatação de acordo com o tamanho
         if (value.length > 10) {
-            // Celular: (00) 00000-0000
             value = value.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3');
         } else if (value.length > 6) {
-            // Fixo ou Parcial: (00) 0000-0000
             value = value.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3');
         } else if (value.length > 2) {
             value = value.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
@@ -148,6 +187,34 @@ if ($perfilAtivo === 'Administrador' || $isAdmin && $perfilAtivo === 'Administra
         }
         
         e.target.value = value;
+    });
+
+    // Máscara e Automação de CEP
+    document.getElementById('cep').addEventListener('input', function (e) {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length > 8) value = value.substring(0, 8);
+        
+        let valorFormatado = value;
+        if (value.length > 5) {
+            valorFormatado = value.replace(/^(\d{5})(\d{0,3})/, '$1-$2');
+        }
+        e.target.value = valorFormatado;
+
+        // Quando o CEP estiver completo (8 dígitos), dispara a busca via API
+        if (value.length === 8) {
+            fetch('<?= base_url('api/consultar-cep') ?>?cep=' + value)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && !data.erro) {
+                        document.getElementById('bairro').value = data.bairro || '';
+                        document.getElementById('cidade').value = data.cidade || '';
+                        document.getElementById('estado').value = data.estado || '';
+                    } else {
+                        alert('CEP não encontrado.');
+                    }
+                })
+                .catch(error => console.error('Erro ao consultar CEP:', error));
+        }
     });
     </script>
 

@@ -44,6 +44,9 @@ $routes->post('profissional/processarAtivacao', [ProfissionalController::class, 
 $routes->get('profissional/ativar-perfil', [ProfissionalController::class, 'ativarPerfil']);
 $routes->get('profissional/dashboard', [ProfissionalController::class, 'dashboard']);
 
+// Rota da API para consulta de CEP via AJAX
+$routes->get('api/consultar-cep', [ProfissionalController::class, 'consultarCepApi']);
+
 // Rotas de Perfil Profissional
 $routes->get('profissional/editar-perfil', 'ProfissionalController::editarPerfil');
 $routes->post('profissional/atualizar-perfil', 'ProfissionalController::atualizarPerfil');
