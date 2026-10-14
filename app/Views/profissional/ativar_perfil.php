@@ -70,11 +70,11 @@
                 <div class="w3-row-padding">
                     <div class="w3-half w3-margin-bottom">
                         <label class="w3-text-dark-grey"><b>CEP *</b></label>
-                        <input class="w3-input w3-border w3-round" type="text" id="cep" name="cep" value="<?= old('cep') ?>" required placeholder="00000-000" maxlength="9">
+                        <input class="w3-input w3-border w3-round" type="text" id="cep" name="cep" value="<?= old('cep', $usuario['cep'] ?? '') ?>" required placeholder="00000-000" maxlength="9">
                     </div>
                     <div class="w3-half w3-margin-bottom">
                         <label class="w3-text-dark-grey"><b>Bairro *</b></label>
-                        <input class="w3-input w3-border w3-round" type="text" id="bairro" name="bairro" value="<?= old('bairro') ?>" readonly required placeholder="Preenchido via CEP">
+                        <input class="w3-input w3-border w3-round" type="text" id="bairro" name="bairro" value="<?= old('bairro', $usuario['bairro'] ?? '') ?>" readonly required placeholder="Preenchido via CEP">
                     </div>
                 </div>
 
@@ -82,11 +82,11 @@
                 <div class="w3-row-padding">
                     <div class="w3-threequarter w3-margin-bottom">
                         <label class="w3-text-dark-grey"><b>Cidade *</b></label>
-                        <input class="w3-input w3-border w3-round" type="text" id="cidade" name="cidade" value="<?= old('cidade') ?>" readonly required placeholder="Preenchida via CEP">
+                        <input class="w3-input w3-border w3-round" type="text" id="cidade" name="cidade" value="<?= old('cidade', $usuario['cidade'] ?? '') ?>" readonly required placeholder="Preenchida via CEP">
                     </div>
                     <div class="w3-quarter w3-margin-bottom">
                         <label class="w3-text-dark-grey"><b>UF *</b></label>
-                        <input class="w3-input w3-border w3-round" type="text" id="estado" name="estado" value="<?= old('estado') ?>" readonly required placeholder="SP" maxlength="2" style="text-transform: uppercase;">
+                        <input class="w3-input w3-border w3-round" type="text" id="estado" name="estado" value="<?= old('estado', $usuario['estado'] ?? '') ?>" readonly required placeholder="SP" maxlength="2" style="text-transform: uppercase;">
                     </div>
                 </div>
 
@@ -98,15 +98,15 @@
                 <div class="w3-row-padding">
                     <div class="w3-col w12 w3-margin-bottom">
                         <label class="w3-text-dark-grey"><b>Apresentação / Sobre seus Serviços *</b></label>
-                        <textarea class="w3-input w3-border w3-round" name="descricaoPerfil" rows="4" required placeholder="Escreva um resumo do seu trabalho, tempo de experiência, diferenciais e como costuma atender seus clientes..."><?= old('descricaoPerfil') ?></textarea>
+                        <textarea class="w3-input w3-border w3-round" name="descricaoPerfil" rows="4" required placeholder="Informe seu CNPJ, escreva um resumo do seu trabalho, tempo de experiência, diferenciais e como costuma atender seus clientes..."><?= old('descricaoPerfil') ?></textarea>
                     </div>
                 </div>
 
-                <!-- Raio de Atendimento em KM -->
+                <!-- Raio de Atendimento em KM (Alterado para padrão 50) -->
                 <div class="w3-row-padding">
                     <div class="w3-col w12 w3-margin-bottom">
                         <label class="w3-text-dark-grey"><b>Raio de Atendimento (km) *</b></label>
-                        <input class="w3-input w3-border w3-round" type="number" name="raio_atendimento_km" value="<?= old('raio_atendimento_km', 15) ?>" min="1" max="500" required placeholder="Ex: 15">
+                        <input class="w3-input w3-border w3-round" type="number" name="raio_atendimento_km" value="<?= old('raio_atendimento_km', 50) ?>" min="1" max="500" required placeholder="Ex: 50">
                         <span class="w3-small w3-text-gray">Distância máxima em quilômetros que você aceita se deslocar para atender chamados.</span>
                     </div>
                 </div>
@@ -123,7 +123,7 @@
                 <div class="w3-row-padding">
                     <div class="w3-col w12 w3-margin-bottom">
                         <label class="w3-text-dark-grey"><b>Selecione suas Especialidades / Categorias *</b></label>
-                        
+
                         <!-- Campo para pesquisar categoria -->
                         <div class="w3-margin-bottom" style="margin-top: 5px;">
                             <input type="text" id="buscaCategoria" class="w3-input w3-border w3-round w3-white" placeholder="🔍 Digite o nome da categoria para buscar..." onkeyup="filtrarCategorias()">
@@ -137,7 +137,7 @@
                                 <?php foreach ($categorias as $cat) : ?>
                                     <div class="w3-margin-bottom item-categoria w3-hide">
                                         <input class="w3-check" type="checkbox" name="categorias[]" value="<?= $cat['id'] ?>" id="cat_<?= $cat['id'] ?>">
-                                        <label for="cat_<?= $cat['id'] ?>" class="w3-validate nome-categoria" style="cursor:pointer;"> 
+                                        <label for="cat_<?= $cat['id'] ?>" class="w3-validate nome-categoria" style="cursor:pointer;">
                                             <?= esc($cat['categoria']) ?>
                                         </label>
                                     </div>
@@ -220,12 +220,23 @@
             }
         }
 
+        // Formata o CEP que já vem do banco logo ao carregar a página
+        window.addEventListener('DOMContentLoaded', function() {
+            const inputCEP = document.getElementById('cep');
+            if (inputCEP && inputCEP.value) {
+                let value = inputCEP.value.replace(/\D/g, '');
+                if (value.length === 8) {
+                    inputCEP.value = value.replace(/^(\d{5})(\d{0,3})/, '$1-$2');
+                }
+            }
+        });
+
         // Máscara e Consulta AJAX de CEP
         const inputCEP = document.getElementById('cep');
         inputCEP.addEventListener('input', function(e) {
             let value = e.target.value.replace(/\D/g, '');
             if (value.length > 8) value = value.substring(0, 8);
-            
+
             let valorFormatado = value;
             if (value.length > 5) {
                 valorFormatado = value.replace(/^(\d{5})(\d{0,3})/, '$1-$2');

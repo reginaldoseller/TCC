@@ -178,22 +178,68 @@ class AdminController extends BaseController
         return redirect()->back()->with('erro', 'Não foi possível registrar os ajustes.');
     }
 
-    // Suspende a adesão do profissional (indisponibilidade temporária/carência)
-    public function suspenderProfissional($id)
-    {
-        $diasCarencia  = 90;
-        $bloqueadoAte = date('Y-m-d H:i:s', strtotime("+{$diasCarencia} days"));
+    
 
+    // Reativa o perfil de um profissional suspenso ou indisponível
+    public function reativarProfissional($usuarioId)
+    {
         $profissionalModel = new ProfissionalModel();
-        $profissionalModel->update($id, [
-            'status'           => 'indisponivel',
+
+        $sucesso = $profissionalModel->where('usuario_id', $usuarioId)->set([
+            'status'           => 'ativo',
             'observacao_admin' => null,
-            'bloqueado_ate'    => $bloqueadoAte
-        ]);
+            'bloqueado_ate'    => null
+        ])->update();
+
+        if ($sucesso) {
+            return redirect()->to(site_url('admin/dashboard#content-profissionais'))
+                ->with('sucesso', 'Perfil profissional reativado com sucesso!');
+        }
 
         return redirect()->to(site_url('admin/dashboard#content-profissionais'))
-            ->with('sucesso', 'Adesão do profissional suspensa temporariamente.');
+            ->with('erro', 'Não foi possível reativar o perfil profissional.');
     }
+
+    // Substitui o método antigo: Suspende o profissional via modal (com motivo e data opcional)
+    public function suspenderProfissional($usuarioId)
+    {
+        $profissionalModel = new ProfissionalModel();
+        
+        $profissional = $profissionalModel->where('usuario_id', $usuarioId)->first();
+        if (!$profissional) {
+            return redirect()->to(site_url('admin/dashboard#content-profissionais'))
+                ->with('erro', 'Profissional não encontrado.');
+        }
+
+        $motivo       = trim($this->request->getPost('motivo_bloqueio'));
+        $bloqueadoAte = $this->request->getPost('bloqueado_ate');
+
+        $bloqueadoAteFormatado = null;
+        if (!empty($bloqueadoAte)) {
+            $dataLimpa = str_replace('T', ' ', $bloqueadoAte);
+            if (strlen($dataLimpa) === 10) {
+                $dataLimpa .= ' 23:59:59';
+            }
+            $timestamp = strtotime($dataLimpa);
+            $bloqueadoAteFormatado = $timestamp ? date('Y-m-d H:i:s', $timestamp) : null;
+        }
+
+        $sucesso = $profissionalModel->where('usuario_id', $usuarioId)->set([
+            'status'           => 'suspenso',
+            'observacao_admin' => !empty($motivo) ? 'Suspenso pelo admin: ' . $motivo : 'Perfil profissional suspenso pelo administrador.',
+            'bloqueado_ate'    => $bloqueadoAteFormatado
+        ])->update();
+
+        if ($sucesso) {
+            return redirect()->to(site_url('admin/dashboard#content-profissionais'))
+                ->with('sucesso', 'Perfil profissional suspenso com sucesso!');
+        }
+
+        return redirect()->to(site_url('admin/dashboard#content-profissionais'))
+            ->with('erro', 'Falha ao atualizar o status do profissional.');
+    }
+
+    
 
     // --- MODERAÇÃO DE USUÁRIOS GERAIS ---
 

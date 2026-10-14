@@ -17,7 +17,7 @@ if ($perfilAtivo === 'Administrador' || ($isAdmin && $perfilAtivo === 'Administr
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Perfil Profissional - GetNinjas</title>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/fontawesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { background-color: #f8f9fa; }
     </style>
@@ -69,7 +69,7 @@ if ($perfilAtivo === 'Administrador' || ($isAdmin && $perfilAtivo === 'Administr
                     
                     <p>
                         <label class="w3-text-dark-grey"><b>Descrição dos seus Serviços / Biografia</b></label>
-                        <textarea class="w3-input w3-border w3-round" name="descricao" rows="4" placeholder="Descreva a sua experiência, especialidades e diferenciais do seu atendimento..." required><?= old('descricao', $profissional['descricao'] ?? '') ?></textarea>
+                        <textarea class="w3-input w3-border w3-round" name="descricao" rows="4" placeholder="Descreva a sua experiência, especialidades e diferenciais do seu atendimento..." required><?= old('descricao', $profissional['descricao'] ?? ($profissional['descricaoPerfil'] ?? '')) ?></textarea>
                     </p>
 
                     <div class="w3-row-padding">
@@ -168,41 +168,61 @@ if ($perfilAtivo === 'Administrador' || ($isAdmin && $perfilAtivo === 'Administr
 
     <!-- Scripts de Máscara e Consulta de CEP via AJAX -->
     <script>
-    // Máscara para WhatsApp
-    document.getElementById('whatsapp').addEventListener('input', function (e) {
-        let value = e.target.value.replace(/\D/g, ''); // Remove tudo que não for dígito
-        if (value.length > 11) {
-            value = value.substring(0, 11); // Limita a 11 dígitos
-        }
+    // Função auxiliar para aplicar a máscara do WhatsApp
+    function aplicarMascaraWhatsapp(valor) {
+        valor = valor.replace(/\D/g, '');
+        if (valor.length > 11) valor = valor.substring(0, 11);
         
-        // Aplica a formatação de acordo com o tamanho
-        if (value.length > 10) {
-            value = value.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3');
-        } else if (value.length > 6) {
-            value = value.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3');
-        } else if (value.length > 2) {
-            value = value.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
-        } else if (value.length > 0) {
-            value = value.replace(/^(\d*)/, '($1');
+        if (valor.length > 10) {
+            valor = valor.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3');
+        } else if (valor.length > 6) {
+            valor = valor.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3');
+        } else if (valor.length > 2) {
+            valor = valor.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
+        } else if (valor.length > 0) {
+            valor = valor.replace(/^(\d*)/, '($1');
         }
-        
-        e.target.value = value;
+        return valor;
+    }
+
+    // Função auxiliar para aplicar a máscara do CEP
+    function aplicarMascaraCep(valor) {
+        valor = valor.replace(/\D/g, '');
+        if (valor.length > 8) valor = valor.substring(0, 8);
+        if (valor.length > 5) {
+            valor = valor.replace(/^(\d{5})(\d{0,3})/, '$1-$2');
+        }
+        return valor;
+    }
+
+    // Aplica as máscaras automaticamente nos inputs ao carregar a página
+    window.addEventListener('DOMContentLoaded', function() {
+        const inputWhatsapp = document.getElementById('whatsapp');
+        if (inputWhatsapp && inputWhatsapp.value) {
+            inputWhatsapp.value = aplicarMascaraWhatsapp(inputWhatsapp.value);
+        }
+
+        const inputCep = document.getElementById('cep');
+        if (inputCep && inputCep.value) {
+            inputCep.value = aplicarMascaraCep(inputCep.value);
+        }
     });
 
-    // Máscara e Automação de CEP
+    // Event listener para digitação no WhatsApp
+    document.getElementById('whatsapp').addEventListener('input', function (e) {
+        e.target.value = aplicarMascaraWhatsapp(e.target.value);
+    });
+
+    // Máscara e Automação de CEP ao digitar
     document.getElementById('cep').addEventListener('input', function (e) {
-        let value = e.target.value.replace(/\D/g, '');
-        if (value.length > 8) value = value.substring(0, 8);
-        
-        let valorFormatado = value;
-        if (value.length > 5) {
-            valorFormatado = value.replace(/^(\d{5})(\d{0,3})/, '$1-$2');
-        }
+        let valorFormatado = aplicarMascaraCep(e.target.value);
         e.target.value = valorFormatado;
 
+        let valueLimpo = e.target.value.replace(/\D/g, '');
+
         // Quando o CEP estiver completo (8 dígitos), dispara a busca via API
-        if (value.length === 8) {
-            fetch('<?= base_url('api/consultar-cep') ?>?cep=' + value)
+        if (valueLimpo.length === 8) {
+            fetch('<?= base_url('api/consultar-cep') ?>?cep=' + valueLimpo)
                 .then(response => response.json())
                 .then(data => {
                     if (data && !data.erro) {

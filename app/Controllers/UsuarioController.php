@@ -170,35 +170,48 @@ class UsuarioController extends BaseController
                 }
             }
 
-            // Verifica se possui perfil profissional cadastrado e aprovado
+            // Verifica se possui perfil profissional cadastrado (independente de estar ativo ou em análise)
             $profissionalModel = new ProfissionalModel();
             $dadosProfissional = $profissionalModel->where('usuario_id', $usuario['id'])->first();
 
             $ehProfissional = !empty($dadosProfissional);
-            $profissionalAprovado = $ehProfissional && isset($dadosProfissional['status']) && $dadosProfissional['status'] === 'ativo';
+            $profissionalAprovado = $ehProfissional && (
+                (is_object($dadosProfissional) && isset($dadosProfissional->status) && $dadosProfissional->status === 'ativo') ||
+                (is_array($dadosProfissional) && isset($dadosProfissional['status']) && $dadosProfissional['status'] === 'ativo')
+            );
 
+            // Extrai o ID e o status do profissional de forma segura (suportando objeto ou array)
+            $profissionalId = null;
+            $statusProfissional = null;
+
+            if ($ehProfissional) {
+                if (is_object($dadosProfissional)) {
+                    $profissionalId     = $dadosProfissional->id ?? null;
+                    $statusProfissional = $dadosProfissional->status ?? null;
+                } elseif (is_array($dadosProfissional)) {
+                    $profissionalId     = $dadosProfissional['id'] ?? null;
+                    $statusProfissional = $dadosProfissional['status'] ?? null;
+                }
+            }
             // Verifica se possui privilégios de administrador
             $ehAdmin = $usuarioModel->ehAdmin($usuario['id']);
 
-            // Define o tipo de perfil inicial com base nas permissões
-            $tipoPerfil = 'Cliente';
-            if ($ehAdmin) {
-                $tipoPerfil = 'Administrador';
-            } elseif ($profissionalAprovado) {
-                $tipoPerfil = 'Profissional';
-            }
+            // Define o perfil ativo inicial (ex: Administrador se for admin, senão Cliente)
+            $tipoPerfilInicial = $ehAdmin ? 'Administrador' : 'Cliente';
 
-            // Grava os dados essenciais na sessão
+            // Grava TODOS os dados essenciais e bandeiras (flags) na sessão de uma vez só
             session()->set([
-                'id'           => $usuario['id'],
-                'nome'         => $usuario['nome'],
-                'email'        => $usuario['email'],
-                'logged_in'    => true,
-                'tipo_perfil'  => $tipoPerfil,
-                'perfil_ativo' => $tipoPerfil,
-                'is_admin'     => $ehAdmin
+                'id'                      => $usuario['id'],
+                'nome'                    => $usuario['nome'],
+                'email'                   => $usuario['email'],
+                'logged_in'               => true,
+                'tipo_perfil'             => $ehAdmin ? 'Administrador' : ($ehProfissional ? 'Profissional' : 'Cliente'),
+                'perfil_ativo'            => $tipoPerfilInicial,
+                'is_admin'                => (bool) $ehAdmin,
+                'tem_perfil_profissional' => (bool) $ehProfissional, // <--- OBRIGATÓRIO PARA O MENU RECONHECER
+                'profissional_id'         => $profissionalId,        // <--- ID do profissional na tabela
+                'status_profissional'     => $statusProfissional     // <--- Status ('ativo', 'em_analise', etc.)
             ]);
-
             // Redireciona de acordo com o perfil principal do usuário
             if ($ehAdmin) {
                 return redirect()->to('admin/dashboard')->with('sucesso', 'Login administrativo realizado com sucesso!');
@@ -258,7 +271,7 @@ class UsuarioController extends BaseController
         }
 
         if (!empty($profissional) && $profissional['status'] === 'em_analise') {
-            return redirect()->back()->with('aviso', 'Sua solicitação ainda está em análise.');
+            return redirect()->back();
         }
 
         return redirect()->to('profissional/ativarPerfil')->with('aviso', 'Preencha seus dados para se cadastrar como profissional.');
@@ -373,14 +386,15 @@ class UsuarioController extends BaseController
 
         $usuario = $usuarioModel->find($usuarioId);
 
+        // Busca o contato priorizando 'whatsapp' (que é o padrão atual da tabela)
         $contatoTelefone = $contatoLinkModel->where('usuario_id', $usuarioId)
-                                           ->where('tipoContato', 'telefone')
-                                           ->first();
+            ->whereIn('tipoContato', ['whatsapp', 'telefone'])
+            ->first();
 
         $telefoneValor = '';
         if ($contatoTelefone) {
-            $telefoneValor = is_object($contatoTelefone) 
-                ? ($contatoTelefone->contato ?? '') 
+            $telefoneValor = is_object($contatoTelefone)
+                ? ($contatoTelefone->contato ?? '')
                 : ($contatoTelefone['contato'] ?? '');
         }
 
@@ -434,7 +448,7 @@ class UsuarioController extends BaseController
         $confirmaNova = $this->request->getPost('confirma_nova_senha');
 
         if (!empty($novaSenha)) {
-            
+
             // Garante que o usuário digitou a senha atual para confirmar a alteração
             if (empty($senhaAtual)) {
                 return redirect()->back()->withInput()->with('erro', 'Para alterar a senha, você deve informar a sua senha atual.');
@@ -444,7 +458,6 @@ class UsuarioController extends BaseController
             $usuarioLogado = $usuarioModel->find($usuarioId);
 
             // CORREÇÃO DA SENHA ATUAL: Utiliza o método seguro do model (verificarCredenciais) 
-            // que considera o padrão de hash e chaves de criptografia do sistema.
             $chebagemCredencial = $usuarioModel->verificarCredenciais($usuarioLogado['email'], $senhaAtual);
 
             if (!$chebagemCredencial) {
@@ -468,9 +481,25 @@ class UsuarioController extends BaseController
         // 8.5. Persistência dos dados atualizados na tabela principal
         $usuarioModel->update($usuarioId, $dadosAtualizacao);
 
-        // Atualiza ou cadastra o telefone na tabela de contatos vinculados
+        // Atualiza ou cadastra o telefone na tabela de contatos vinculados utilizando 'whatsapp' como tipo padrão
         if (!empty($telefoneLimpo)) {
-            $contatoLinkModel->salvarContato($usuarioId, 'telefone', $telefoneLimpo);
+            $existeContato = $contatoLinkModel->where('usuario_id', $usuarioId)
+                ->whereIn('tipoContato', ['whatsapp', 'telefone'])
+                ->first();
+
+            if ($existeContato) {
+                $idContato = is_object($existeContato) ? $existeContato->id : $existeContato['id'];
+                $contatoLinkModel->update($idContato, [
+                    'tipoContato' => 'whatsapp',
+                    'contato'     => $telefoneLimpo
+                ]);
+            } else {
+                $contatoLinkModel->insert([
+                    'usuario_id'  => $usuarioId,
+                    'tipoContato' => 'whatsapp',
+                    'contato'     => $telefoneLimpo
+                ]);
+            }
         }
 
         // 8.6. Atualiza as informações básicas visíveis na sessão

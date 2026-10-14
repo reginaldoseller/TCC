@@ -210,7 +210,7 @@ class ProfissionalController extends BaseController
             'logged_in'    => true
         ]);
 
-        return redirect()->to('cliente/dashboard')->with('sucesso', 'Cadastro realizado com sucesso! Seu perfil profissional está em análise pela administração.');
+        return redirect()->to('cliente/dashboard');
     }
 
     /**
@@ -222,8 +222,15 @@ class ProfissionalController extends BaseController
             return redirect()->to('login')->with('erro', 'Faça login para acessar esta página.');
         }
 
+        $usuarioId = session()->get('id');
+
+        $usuarioModel   = new UsuarioModel();
         $categoriaModel = new CategoriaModel();
-        $data['categorias'] = $categoriaModel->findAll();
+
+        $data = [
+            'usuario'    => $usuarioModel->find($usuarioId),
+            'categorias' => $categoriaModel->findAll()
+        ];
 
         return view('profissional/ativar_perfil', $data);
     }
@@ -348,7 +355,7 @@ class ProfissionalController extends BaseController
         session()->set('tipo_perfil', 'Profissional');
         session()->set('perfil_ativo', 'Cliente');
 
-        return redirect()->to('cliente/dashboard')->with('sucesso', 'Solicitação enviada! Seu perfil profissional está em análise pela administração.');
+        return redirect()->to('cliente/dashboard');
     }
 
     /**
@@ -418,6 +425,7 @@ class ProfissionalController extends BaseController
         return view('profissional/editar_perfil', $data);
     }
 
+
     /**
      * Processa a atualização do perfil profissional e links
      */
@@ -437,9 +445,6 @@ class ProfissionalController extends BaseController
             'descricao'    => 'required|min_length[10]',
             'raio_atuacao' => 'required|integer|greater_than[0]',
             'cep'          => 'required',
-            'bairro'       => 'required',
-            'cidade'       => 'required',
-            'estado'       => 'required|exact_length[2]',
         ];
 
         if (!$this->validate($regras)) {
@@ -447,28 +452,51 @@ class ProfissionalController extends BaseController
         }
 
         $cepLimpo  = preg_replace('/[^0-9]/', '', $this->request->getPost('cep'));
-        $bairro    = trim($this->request->getPost('bairro'));
-        $cidade    = trim($this->request->getPost('cidade'));
-        $estado    = strtoupper(trim($this->request->getPost('estado')));
-        
-        // Captura o estado do checkbox de restrição (1 se marcado, 0 se desmarcado)
         $apenasMesmaCidade = $this->request->getPost('apenas_mesma_cidade') ? 1 : 0;
 
-        // 🛡️ SEGURANÇA: Se por acaso os campos vieram vazios, resolvemos via backend pelo ViaCEP
-        if (empty($bairro) || empty($cidade) || empty($estado)) {
+        // 🛡️ ABORDAGEM BLINDADA: Buscamos sempre os dados oficiais do endereço diretamente pelo CEP no backend
+        $bairro = trim($this->request->getPost('bairro'));
+        $cidade = trim($this->request->getPost('cidade'));
+        $estado = strtoupper(trim($this->request->getPost('estado')));
+
+        if (strlen($cepLimpo) === 8) {
             $dadosViaCep = $localizacaoService->consultarCep($cepLimpo);
-            if ($dadosViaCep) {
-                $bairro = empty($bairro) ? ($dadosViaCep['bairro'] ?? '') : $bairro;
-                $cidade = empty($cidade) ? ($dadosViaCep['cidade'] ?? '') : $cidade;
-                $estado = empty($estado) ? ($dadosViaCep['estado'] ?? '') : $estado;
+            if ($dadosViaCep && !isset($dadosViaCep['erro'])) {
+                $bairro = !empty($dadosViaCep['bairro']) ? $dadosViaCep['bairro'] : $bairro;
+                $cidade = !empty($dadosViaCep['cidade']) ? $dadosViaCep['cidade'] : $cidade;
+                $estado = !empty($dadosViaCep['estado']) ? $dadosViaCep['estado'] : $estado;
             }
         }
 
-        // Recalcula as coordenadas caso o endereço/CEP tenha sido modificado
-        $coordenadas = $localizacaoService->obterCoordenadas($bairro, $cidade, $estado);
-        $latitude    = $coordenadas['latitude'] ?? null;
-        $longitude   = $coordenadas['longitude'] ?? null;
+        // Fallback caso venha vazio
+        if (empty($bairro) || empty($cidade) || empty($estado)) {
+            $usuarioModelTemp = new UsuarioModel();
+            $usuarioTemp = $usuarioModelTemp->find($usuarioId);
+            if ($usuarioTemp) {
+                $bairro = empty($bairro) ? ($usuarioTemp['bairro'] ?? '') : $bairro;
+                $cidade = empty($cidade) ? ($usuarioTemp['cidade'] ?? '') : $cidade;
+                $estado = empty($estado) ? ($usuarioTemp['estado'] ?? '') : $estado;
+            }
+        }
 
+        // Busca o registro atual do profissional para comparar se o CEP mudou
+        $profissionalAtual = $profissionalModel->where('usuario_id', $usuarioId)->first();
+        $cepSalvoAntigo    = $profissionalAtual['cep'] ?? '';
+
+        // Calcula as coordenadas obrigatoriamente se o CEP mudou, se estiverem vazias ou se for um cadastro novo
+        $latitude  = $profissionalAtual['latitude'] ?? null;
+        $longitude = $profissionalAtual['longitude'] ?? null;
+
+        if (empty($latitude) || empty($longitude) || $cepLimpo !== $cepSalvoAntigo) {
+            $coordenadas = $localizacaoService->obterCoordenadas($bairro, $cidade, $estado);
+            
+            if (!empty($coordenadas['latitude']) && !empty($coordenadas['longitude'])) {
+                $latitude  = $coordenadas['latitude'];
+                $longitude = $coordenadas['longitude'];
+            }
+        }
+
+        // Monta os dados para salvar
         $dadosProfissional = [
             'usuario_id'          => $usuarioId,
             'descricao'           => $this->request->getPost('descricao'),
@@ -484,9 +512,7 @@ class ProfissionalController extends BaseController
             'longitude'           => $longitude,
         ];
 
-        $profissional = $profissionalModel->where('usuario_id', $usuarioId)->first();
-
-        if ($profissional) {
+        if ($profissionalAtual) {
             $profissionalModel->where('usuario_id', $usuarioId)->set($dadosProfissional)->update();
         } else {
             $dadosProfissional['status'] = 'pendente';
@@ -502,7 +528,7 @@ class ProfissionalController extends BaseController
             'estado' => $estado
         ]);
 
-        // 2. Salva os links e redes sociais na 'contato_links' (Tratando whatsapp e redes opcionais)
+        // 2. Salva os links e redes sociais na 'contato_links'
         $redes = ['whatsapp', 'instagram', 'facebook', 'linkedin'];
 
         foreach ($redes as $tipo) {
@@ -527,7 +553,7 @@ class ProfissionalController extends BaseController
             }
         }
 
-        return redirect()->back()->with('sucesso', 'Perfil profissional atualizado com sucesso!');
+        return redirect()->to(site_url('profissional/dashboard'))->with('sucesso', 'Perfil profissional atualizado com sucesso!');
     }
 
     /**
