@@ -4,17 +4,17 @@ $nomeUsuario = session()->get('nome') ?? 'Usuário';
 $isAdmin     = (bool) session()->get('is_admin');
 $isLoggedIn  = (bool) session()->get('logged_in');
 
-// Verifica se o usuário tem permissão para alternar perfis
-$podeAlternar = $isAdmin || session()->get('tem_perfil_profissional') || session()->get('tipo_perfil') === 'Profissional' || $perfilAtivo === 'Profissional';
-
 // Verifica se o usuário possui cadastro profissional (seja pelo perfil ativo, flag na sessão ou ID profissional)
 $temCadastroProfissional = (bool) (
     $perfilAtivo === 'Profissional' ||
     session()->get('tem_perfil_profissional') || 
     session()->get('tipo_perfil') === 'Profissional' || 
-    session()->get('profissional_id') || 
+    session()->get('profissional_id' ) || 
     session()->get('status_profissional')
 );
+
+// Verifica se o usuário tem permissão para alternar perfis
+$podeAlternar = $isAdmin || $temCadastroProfissional;
 
 $dashboardUrl = site_url('cliente/dashboard');
 if ($perfilAtivo === 'Administrador') {
@@ -27,7 +27,7 @@ if ($perfilAtivo === 'Administrador') {
 <!-- Header / Navbar Global -->
 <header style="background-color: #3d3a37; color: #ffffff; position: relative; z-index: 10000; width: 100%; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
     <div style="max-width: 1200px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
-        
+
         <!-- Logótipo -->
         <a href="<?= $dashboardUrl ?>" style="padding: 0; text-decoration: none; color: #ffffff; font-weight: bold; font-size: 1.25rem; display: flex; align-items: center; gap: 8px;">
             <i class="bi bi-shield-lock-fill" style="color: #ffc107; font-size: 1.4rem;"></i>
@@ -37,7 +37,7 @@ if ($perfilAtivo === 'Administrador') {
         <?php if ($isLoggedIn): ?>
             <!-- Lado Direito: Perfil e Ações -->
             <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                
+
                 <!-- Nome e Badge -->
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="font-size: 0.875rem; color: #e0e0e0; display: flex; align-items: center; gap: 4px;">
@@ -49,7 +49,7 @@ if ($perfilAtivo === 'Administrador') {
                     </span>
                 </div>
 
-                <!-- Dropdown Alternar Perfil (Disponível se for Admin ou tiver múltiplos perfis) -->
+                <!-- Dropdown Alternar Perfil -->
                 <?php if ($podeAlternar): ?>
                     <div style="position: relative; display: inline-block;">
                         <button type="button" onclick="toggleMenu('dropdownPerfilMenuGlobal', event)" style="background-color: #2b2826; color: #ffffff; border: 1px solid #ffffff; border-radius: 6px; padding: 5px 12px; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 6px;">
@@ -57,23 +57,70 @@ if ($perfilAtivo === 'Administrador') {
                             <span>Alternar Perfil</span>
                             <i class="bi bi-caret-down-fill" style="font-size: 0.75rem;"></i>
                         </button>
-                        
-                        <!-- Caixa Flutuante do Menu -->
+
+                        <!-- Caixa Flutuante do Menu "Alternar Perfil" -->
                         <div id="dropdownPerfilMenuGlobal" style="display: none; position: absolute; right: 0; top: 100%; min-width: 210px; background-color: #ffffff; color: #212529; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); z-index: 999999; margin-top: 6px; overflow: hidden; border: 1px solid #dee2e6;">
-                            
+
                             <?php if ($isAdmin): ?>
-                                <a href="<?= site_url('usuario/mudarParaAdmin') ?>" style="display: flex; align-items: center; gap: 8px; padding: 10px 16px; text-decoration: none; color: #212529; font-size: 0.875rem; font-weight: 600; background-color: <?= $perfilAtivo === 'Administrador' ? '#f8f9fa' : 'transparent' ?>;">
-                                    <i class="bi bi-shield-lock" style="color: #d9a74a;"></i> Modo Administrador
+                                <?php 
+                                    $isAdminAtivo = ($perfilAtivo === 'Administrador');
+                                    $estiloAdmin = $isAdminAtivo 
+                                        ? 'background-color: #e9ecef; color: #6c757d; pointer-events: none; opacity: 0.7;' 
+                                        : 'background-color: transparent; color: #212529;';
+                                ?>
+                                <a href="<?= site_url('usuario/mudarParaAdmin') ?>" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; text-decoration: none; font-size: 0.875rem; font-weight: 600; <?= $estiloAdmin ?>">
+                                    <span style="display: flex; align-items: center; gap: 8px;">
+                                        <i class="bi bi-shield-lock" style="color: #d9a74a;"></i> Modo Administrador
+                                    </span>
+                                    <?php if ($isAdminAtivo): ?>
+                                        <span style="font-size: 0.7rem; font-weight: bold; background: #ced4da; padding: 2px 6px; border-radius: 4px;">Atual</span>
+                                    <?php endif; ?>
                                 </a>
                                 <div style="border-top: 1px solid #e9ecef; margin: 0;"></div>
                             <?php endif; ?>
 
-                            <a href="<?= site_url('usuario/mudarParaCliente') ?>" style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; text-decoration: none; color: #212529; font-size: 0.875rem; background-color: <?= $perfilAtivo === 'Cliente' ? '#f8f9fa' : 'transparent' ?>;">
-                                <i class="bi bi-person"></i> Modo Cliente
+                            <?php 
+                                $isClienteAtivo = ($perfilAtivo === 'Cliente');
+                                $estiloCliente = $isClienteAtivo 
+                                    ? 'background-color: #e9ecef; color: #6c757d; pointer-events: none; opacity: 0.7;' 
+                                    : 'background-color: transparent; color: #212529;';
+                            ?>
+                            <a href="<?= site_url('usuario/mudarParaCliente') ?>" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; text-decoration: none; font-size: 0.875rem; <?= $estiloCliente ?>">
+                                <span style="display: flex; align-items: center; gap: 10px;">
+                                    <i class="bi bi-person"></i> Modo Cliente
+                                </span>
+                                <?php if ($isClienteAtivo): ?>
+                                    <span style="font-size: 0.7rem; font-weight: bold; background: #ced4da; padding: 2px 6px; border-radius: 4px;">Atual</span>
+                                <?php endif; ?>
                             </a>
-                            <a href="<?= site_url('usuario/mudarParaProfissional') ?>" style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; text-decoration: none; color: #212529; font-size: 0.875rem; background-color: <?= $perfilAtivo === 'Profissional' ? '#f8f9fa' : 'transparent' ?>;">
-                                <i class="bi bi-briefcase"></i> Modo Profissional
-                            </a>
+
+                            <?php if ($temCadastroProfissional): ?>
+                                <div style="border-top: 1px solid #e9ecef; margin: 0;"></div>
+                                <?php 
+                                    $statusProf = session()->get('status_profissional') ?? '';
+                                    $isProfissionalAtivo = ($perfilAtivo === 'Profissional');
+                                    $isProfissionalAprovado = ($statusProf === 'ativo');
+
+                                    if (!$isProfissionalAprovado) {
+                                        $estiloProfissional = 'background-color: #f8f9fa; color: #adb5bd; pointer-events: none; opacity: 0.8;';
+                                    } elseif ($isProfissionalAtivo) {
+                                        $estiloProfissional = 'background-color: #e9ecef; color: #6c757d; pointer-events: none; opacity: 0.7;';
+                                    } else {
+                                        $estiloProfissional = 'background-color: transparent; color: #212529;';
+                                    }
+                                ?>
+                                <a href="<?= site_url('usuario/mudarParaProfissional') ?>" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; text-decoration: none; font-size: 0.875rem; <?= $estiloProfissional ?>">
+                                    <span style="display: flex; align-items: center; gap: 10px;">
+                                        <i class="bi bi-briefcase"></i> Modo Profissional
+                                    </span>
+                                    <?php if ($isProfissionalAtivo): ?>
+                                        <span style="font-size: 0.7rem; font-weight: bold; background: #ced4da; padding: 2px 6px; border-radius: 4px;">Atual</span>
+                                    <?php elseif (!$isProfissionalAprovado): ?>
+                                        <span style="font-size: 0.7rem; font-weight: bold; background: #ffc107; color: #212529; padding: 2px 6px; border-radius: 4px;">Em Análise</span>
+                                    <?php endif; ?>
+                                </a>
+                            <?php endif; ?>
+
                         </div>
                     </div>
                 <?php endif; ?>
@@ -85,10 +132,10 @@ if ($perfilAtivo === 'Administrador') {
                         <span>Meu Perfil</span>
                         <i class="bi bi-caret-down-fill" style="font-size: 0.75rem;"></i>
                     </button>
-                    
+
                     <!-- Caixa Flutuante do Menu Meu Perfil -->
                     <div id="dropdownMeuPerfilMenu" style="display: none; position: absolute; right: 0; top: 100%; min-width: 220px; background-color: #ffffff; color: #212529; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); z-index: 999999; margin-top: 6px; overflow: hidden; border: 1px solid #dee2e6;">
-                        
+
                         <!-- Dados Pessoais -->
                         <a href="<?= site_url('meu-perfil') ?>" style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; text-decoration: none; color: #212529; font-size: 0.875rem;">
                             <i class="bi bi-person-badge" style="color: #6c757d;"></i> Dados Pessoais
@@ -121,32 +168,32 @@ if ($perfilAtivo === 'Administrador') {
 </header>
 
 <script>
-function toggleMenu(id, e) {
-    if (e) e.stopPropagation();
-    
-    // Fecha todos os dropdowns para evitar sobreposição
-    var menus = ['dropdownPerfilMenuGlobal', 'dropdownMeuPerfilMenu'];
-    menus.forEach(function(menuId) {
-        var el = document.getElementById(menuId);
-        if (el && menuId !== id) {
-            el.style.display = "none";
-        }
-    });
+    function toggleMenu(id, e) {
+        if (e) e.stopPropagation();
 
-    var drop = document.getElementById(id);
-    if (drop) {
-        drop.style.display = (drop.style.display === "block") ? "none" : "block";
+        // Fecha todos os dropdowns para evitar sobreposição
+        var menus = ['dropdownPerfilMenuGlobal', 'dropdownMeuPerfilMenu'];
+        menus.forEach(function(menuId) {
+            var el = document.getElementById(menuId);
+            if (el && menuId !== id) {
+                el.style.display = "none";
+            }
+        });
+
+        var drop = document.getElementById(id);
+        if (drop) {
+            drop.style.display = (drop.style.display === "block") ? "none" : "block";
+        }
     }
-}
 
-// Fecha os menus ao clicar fora
-window.addEventListener('click', function() {
-    var menus = ['dropdownPerfilMenuGlobal', 'dropdownMeuPerfilMenu'];
-    menus.forEach(function(menuId) {
-        var el = document.getElementById(menuId);
-        if (el) {
-            el.style.display = "none";
-        }
+    // Fecha os menus ao clicar fora
+    window.addEventListener('click', function() {
+        var menus = ['dropdownPerfilMenuGlobal', 'dropdownMeuPerfilMenu'];
+        menus.forEach(function(menuId) {
+            var el = document.getElementById(menuId);
+            if (el) {
+                el.style.display = "none";
+            }
+        });
     });
-});
 </script>

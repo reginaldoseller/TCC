@@ -29,7 +29,7 @@
             </select>
         </div>
 
-        <!-- Select Status da Aprovação/Perfil (Valores ajustados conforme ENUM do banco) -->
+        <!-- Select Status da Aprovação/Perfil -->
         <div class="w3-third w3-margin-bottom">
             <label class="w3-text-grey w3-small"><b>Status do Perfil</b></label>
             <select name="busca_prof_status" class="w3-select w3-border w3-round w3-white">
@@ -77,9 +77,9 @@
             <tbody>
                 <?php foreach ($profissionais as $prof): ?>
                     <?php
-                    // Usando usuario_id como identificador principal
                     $profId = $prof['usuario_id'] ?? '-';
                     $statusPerfil = $prof['status'] ?? 'em_analise';
+                    $isProfSuspenso = ($statusPerfil === 'suspenso');
                     ?>
                     <tr>
                         <td>#<?= $profId ?></td>
@@ -122,7 +122,7 @@
                             <?php endif; ?>
                         </td>
                         <td class="w3-right-align">
-                            <!-- Botão Dossiê (Reservado para Implementação Futura) -->
+                            <!-- Botão Dossiê -->
                             <button type="button"
                                 class="w3-button w3-light-grey w3-text-grey w3-hover-blue w3-round w3-tiny w3-margin-right"
                                 title="Relatório/Dossiê do Profissional"
@@ -130,18 +130,26 @@
                                 <i class="bi bi-file-earmark-person"></i> Dossiê
                             </button>
 
-                            <!-- Ações Condicionais por Status -->
+                            <!-- Ações baseadas no Status -->
                             <?php if (in_array($statusPerfil, ['em_analise', 'pendente'])): ?>
                                 <a href="<?= site_url('admin/aprovarProfissional/' . $profId) ?>"
                                     class="w3-button w3-green w3-round w3-tiny"
                                     onclick="return confirm('Aprovar o perfil deste profissional?')">
                                     <i class="bi bi-check-lg"></i> Aprovar
                                 </a>
+                            <?php elseif ($isProfSuspenso): ?>
+                                <!-- Botão Reativar Profissional -->
+                                <a href="<?= site_url('admin/reativarProfissional/' . $profId) ?>"
+                                    class="w3-button w3-green w3-round w3-tiny"
+                                    onclick="return confirm('Confirma a reativação do perfil deste profissional?')">
+                                    <i class="bi bi-check-circle"></i> Reativar
+                                </a>
                             <?php else: ?>
+                                <!-- Botão Suspender Profissional (Abre o Modal) -->
                                 <button type="button"
-                                    class="w3-button w3-amber w3-round w3-tiny"
-                                    onclick="alert('Em breve: Moderação/Pausa do Perfil Profissional')">
-                                    <i class="bi bi-pause-circle"></i> Moderar
+                                    class="w3-button w3-red w3-round w3-tiny"
+                                    onclick="abrirModalSuspenderProf(<?= $profId ?>, '<?= esc($prof['nome'], 'js') ?>')">
+                                    <i class="bi bi-slash-circle"></i> Suspender
                                 </button>
                             <?php endif; ?>
                         </td>
@@ -158,3 +166,81 @@
         </div>
     <?php endif; ?>
 <?php endif; ?>
+
+<!-- MODAL ÚNICO DE SUSPENSÃO DE PROFISSIONAL -->
+<div id="modalSuspenderProfissional" class="w3-modal" style="padding-top: 50px;">
+    <div class="w3-modal-content w3-card-4 w3-animate-top w3-round-large" style="max-width: 520px; overflow: hidden; border: none;">
+
+        <header class="w3-container w3-white w3-border-bottom" style="padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background-color: #fee2e2; color: #dc2626; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                </div>
+                <div>
+                    <h5 class="w3-bold my-0 w3-text-dark-grey" style="font-size: 1.1rem;">Suspender Perfil Profissional</h5>
+                    <span class="w3-small w3-text-grey">Ação de moderação comercial</span>
+                </div>
+            </div>
+            <span onclick="fecharModalSuspenderProf()" class="w3-button w3-transparent w3-hover-light-grey w3-round-circle" style="font-size: 20px; line-height: 1; padding: 6px 12px;">&times;</span>
+        </header>
+
+        <form id="formSuspenderProfissional" action="" method="post" class="w3-container" style="padding: 24px;">
+            <?= csrf_field() ?>
+
+            <div class="w3-padding w3-round-large w3-margin-bottom" style="background-color: #f8fafc; border: 1px solid #e2e8f0; font-size: 0.9rem; color: #475569;">
+                A suspensão ocultará o perfil profissional de <strong id="modal_prof_nome" class="w3-text-dark-grey">...</strong> e impedirá novos orçamentos.
+            </div>
+
+            <div class="w3-margin-bottom">
+                <label for="motivo_bloqueio_prof" class="w3-text-dark-grey w3-small w3-bold" style="display: block; margin-bottom: 6px;">
+                    Motivo da Suspensão <span style="color: #dc2626;">*</span>
+                </label>
+                <textarea class="w3-input w3-border w3-round-large w3-white"
+                          id="motivo_bloqueio_prof"
+                          name="motivo_bloqueio"
+                          rows="3"
+                          style="padding: 10px; resize: vertical; font-size: 0.95rem;"
+                          placeholder="Ex: Descumprimento das diretrizes de prestação de serviços."
+                          required></textarea>
+            </div>
+
+            <div class="w3-margin-bottom">
+                <label for="bloqueado_ate_prof" class="w3-text-dark-grey w3-small w3-bold" style="display: block; margin-bottom: 6px;">
+                    Suspender Até <span class="w3-text-grey w3-normal">(Opcional)</span>
+                </label>
+                <input type="datetime-local"
+                       class="w3-input w3-border w3-round-large w3-white"
+                       id="bloqueado_ate_prof"
+                       name="bloqueado_ate"
+                       style="padding: 10px; font-size: 0.95rem; color: #334155;">
+                <span class="w3-tiny w3-text-grey" style="display: block; margin-top: 4px;">Deixe em branco para aplicar suspensão por tempo indeterminado.</span>
+            </div>
+
+            <div class="w3-margin-top" style="display: flex; justify-content: flex-end; gap: 10px; padding-top: 12px; border-top: 1px solid #f1f5f9;">
+                <button type="button" onclick="fecharModalSuspenderProf()" class="w3-button w3-light-grey w3-hover-grey w3-round-large w3-bold" style="padding: 10px 20px;">
+                    Cancelar
+                </button>
+                <button type="submit" class="w3-button w3-round-large w3-bold" style="background-color: #dc2626; color: white; padding: 10px 20px;">
+                    <i class="bi bi-slash-circle me-1"></i> Confirmar Suspensão
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function abrirModalSuspenderProf(id, nome) {
+        const form = document.getElementById('formSuspenderProfissional');
+        form.action = "<?= site_url('admin/suspenderProfissional') ?>/" + id;
+
+        document.getElementById('modal_prof_nome').innerText = nome;
+        document.getElementById('motivo_bloqueio_prof').value = '';
+        document.getElementById('bloqueado_ate_prof').value = '';
+
+        document.getElementById('modalSuspenderProfissional').style.display = 'block';
+    }
+
+    function fecharModalSuspenderProf() {
+        document.getElementById('modalSuspenderProfissional').style.display = 'none';
+    }
+</script>

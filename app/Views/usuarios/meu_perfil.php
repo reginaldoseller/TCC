@@ -111,17 +111,17 @@
                         </div>
                         <div class="w3-third w3-margin-top">
                             <label class="w3-text-dark-grey"><b>Cidade</b></label>
-                            <input class="w3-input w3-border w3-round" type="text" name="cidade" value="<?= old('cidade', $usuario['cidade'] ?? '') ?>">
+                            <input id="cidade" class="w3-input w3-border w3-round" type="text" name="cidade" value="<?= old('cidade', $usuario['cidade'] ?? '') ?>">
                         </div>
                         <div class="w3-third w3-margin-top">
                             <label class="w3-text-dark-grey"><b>Estado (UF)</b></label>
-                            <input class="w3-input w3-border w3-round" type="text" name="estado" maxlength="2" value="<?= old('estado', $usuario['estado'] ?? '') ?>">
+                            <input id="estado" class="w3-input w3-border w3-round" type="text" name="estado" maxlength="2" value="<?= old('estado', $usuario['estado'] ?? '') ?>">
                         </div>
                     </div>
 
                     <p class="w3-margin-top">
                         <label class="w3-text-dark-grey"><b>Bairro</b></label>
-                        <input class="w3-input w3-border w3-round" type="text" name="bairro" value="<?= old('bairro', $usuario['bairro'] ?? '') ?>">
+                        <input id="bairro" class="w3-input w3-border w3-round" type="text" name="bairro" value="<?= old('bairro', $usuario['bairro'] ?? '') ?>">
                     </p>
                 </div>
             </div>
@@ -165,7 +165,7 @@
     <!-- Rodapé Global Reutilizado -->
     <?= view('components/footer') ?>
 
-    <!-- JavaScript das Máscaras Automáticas -->
+    <!-- JavaScript das Máscaras e Consulta AJAX de CEP -->
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             
@@ -209,7 +209,30 @@
 
             if (elCpf) elCpf.addEventListener('input', e => e.target.value = formatarCPF(e.target.value));
             if (elTel) elTel.addEventListener('input', e => e.target.value = formatarTelefone(e.target.value));
-            if (elCep) elCep.addEventListener('input', e => e.target.value = formatarCEP(e.target.value));
+            
+            // Evento de CEP com AJAX integrado
+            if (elCep) {
+                elCep.addEventListener('input', function(e) {
+                    let valorFormatado = formatarCEP(e.target.value);
+                    e.target.value = valorFormatado;
+
+                    let valorLimpo = e.target.value.replace(/\D/g, '');
+                    if (valorLimpo.length === 8) {
+                        fetch('<?= base_url('api/consultar-cep') ?>?cep=' + valorLimpo)
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data && !data.erro) {
+                                    document.getElementById('bairro').value = data.bairro || '';
+                                    document.getElementById('cidade').value = data.cidade || '';
+                                    document.getElementById('estado').value = data.estado || '';
+                                } else {
+                                    alert('CEP não encontrado.');
+                                }
+                            })
+                            .catch(error => console.error('Erro ao consultar CEP:', error));
+                    }
+                });
+            }
         });
     </script>
 </body>

@@ -79,7 +79,7 @@
                     </div>
                     <div class="w3-half w3-margin-bottom">
                         <label class="w3-text-dark-grey"><b>Bairro *</b></label>
-                        <input class="w3-input w3-border w3-round" type="text" name="bairro" value="<?= old('bairro') ?>" required placeholder="Seu bairro">
+                        <input class="w3-input w3-border w3-round" type="text" id="bairro" name="bairro" value="<?= old('bairro') ?>" readonly required placeholder="Preenchido via CEP">
                     </div>
                 </div>
 
@@ -87,11 +87,11 @@
                 <div class="w3-row-padding">
                     <div class="w3-threequarter w3-margin-bottom">
                         <label class="w3-text-dark-grey"><b>Cidade *</b></label>
-                        <input class="w3-input w3-border w3-round" type="text" name="cidade" value="<?= old('cidade') ?>" required placeholder="Sua cidade">
+                        <input class="w3-input w3-border w3-round" type="text" id="cidade" name="cidade" value="<?= old('cidade') ?>" readonly required placeholder="Preenchida via CEP">
                     </div>
                     <div class="w3-quarter w3-margin-bottom">
                         <label class="w3-text-dark-grey"><b>UF *</b></label>
-                        <input class="w3-input w3-border w3-round" type="text" name="estado" value="<?= old('estado') ?>" required placeholder="SP" maxlength="2" style="text-transform: uppercase;">
+                        <input class="w3-input w3-border w3-round" type="text" id="estado" name="estado" value="<?= old('estado') ?>" readonly required placeholder="SP" maxlength="2" style="text-transform: uppercase;">
                     </div>
                 </div>
 
@@ -131,7 +131,7 @@
         <p class="w3-small w3-text-gray">&copy; <?= date('Y') ?> GetNinjas - Todos os direitos reservados.</p>
     </footer>
 
-    <!-- Scripts de Máscara (Interação Visual) -->
+    <!-- Scripts de Máscara e Consulta de CEP via AJAX -->
     <script>
         // Máscara Dinâmica de CPF
         const inputCPF = document.getElementById('cpf');
@@ -158,15 +158,32 @@
             e.target.value = v;
         });
 
-        // Máscara Dinâmica de CEP
+        // Máscara Dinâmica e Consulta AJAX de CEP
         const inputCEP = document.getElementById('cep');
         inputCEP.addEventListener('input', function(e) {
-            let v = e.target.value.replace(/\D/g, '');
-            if (v.length > 8) v = v.slice(0, 8);
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 8) value = value.substring(0, 8);
             
-            v = v.replace(/^(\d{5})(\d)/, '$1-$2');
-            
-            e.target.value = v;
+            let valorFormatado = value;
+            if (value.length > 5) {
+                valorFormatado = value.replace(/^(\d{5})(\d{0,3})/, '$1-$2');
+            }
+            e.target.value = valorFormatado;
+
+            if (value.length === 8) {
+                fetch('<?= base_url('api/consultar-cep') ?>?cep=' + value)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && !data.erro) {
+                            document.getElementById('bairro').value = data.bairro || '';
+                            document.getElementById('cidade').value = data.cidade || '';
+                            document.getElementById('estado').value = data.estado || '';
+                        } else {
+                            alert('CEP não encontrado.');
+                        }
+                    })
+                    .catch(error => console.error('Erro ao consultar CEP:', error));
+            }
         });
     </script>
 

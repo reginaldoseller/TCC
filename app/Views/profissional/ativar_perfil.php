@@ -59,32 +59,71 @@
                 <div class="w3-panel w3-light-grey w3-leftbar w3-border-blue w3-padding-16 w3-margin-bottom">
                     <p class="w3-small w3-margin-none w3-text-dark-grey">
                         <i class="fa-solid fa-circle-info w3-text-blue w3-margin-right"></i>
-                        Seus dados de contato e endereço já cadastrados serão utilizados para conectar você aos clientes da sua região.
+                        Informe os dados de localização e atendimento do seu negócio para conectar você aos clientes da região.
                     </p>
                 </div>
+
+                <!-- Seção de Endereço / Localização -->
+                <h4 class="w3-text-blue w3-bold w3-margin-bottom"><i class="fa-solid fa-location-dot"></i> Endereço Base</h4>
+
+                <!-- Linha CEP e Bairro -->
+                <div class="w3-row-padding">
+                    <div class="w3-half w3-margin-bottom">
+                        <label class="w3-text-dark-grey"><b>CEP *</b></label>
+                        <input class="w3-input w3-border w3-round" type="text" id="cep" name="cep" value="<?= old('cep', $usuario['cep'] ?? '') ?>" required placeholder="00000-000" maxlength="9">
+                    </div>
+                    <div class="w3-half w3-margin-bottom">
+                        <label class="w3-text-dark-grey"><b>Bairro *</b></label>
+                        <input class="w3-input w3-border w3-round" type="text" id="bairro" name="bairro" value="<?= old('bairro', $usuario['bairro'] ?? '') ?>" readonly required placeholder="Preenchido via CEP">
+                    </div>
+                </div>
+
+                <!-- Linha Cidade e UF -->
+                <div class="w3-row-padding">
+                    <div class="w3-threequarter w3-margin-bottom">
+                        <label class="w3-text-dark-grey"><b>Cidade *</b></label>
+                        <input class="w3-input w3-border w3-round" type="text" id="cidade" name="cidade" value="<?= old('cidade', $usuario['cidade'] ?? '') ?>" readonly required placeholder="Preenchida via CEP">
+                    </div>
+                    <div class="w3-quarter w3-margin-bottom">
+                        <label class="w3-text-dark-grey"><b>UF *</b></label>
+                        <input class="w3-input w3-border w3-round" type="text" id="estado" name="estado" value="<?= old('estado', $usuario['estado'] ?? '') ?>" readonly required placeholder="SP" maxlength="2" style="text-transform: uppercase;">
+                    </div>
+                </div>
+
+                <hr class="w3-border-grey" style="margin: 20px 0;">
+
+                <h4 class="w3-text-blue w3-bold w3-margin-bottom"><i class="fa-solid fa-briefcase"></i> Detalhes do Atendimento</h4>
 
                 <!-- Descrição dos Serviços -->
                 <div class="w3-row-padding">
                     <div class="w3-col w12 w3-margin-bottom">
                         <label class="w3-text-dark-grey"><b>Apresentação / Sobre seus Serviços *</b></label>
-                        <textarea class="w3-input w3-border w3-round" name="descricaoPerfil" rows="5" required placeholder="Escreva um resumo do seu trabalho, tempo de experiência, diferenciais e como costuma atender seus clientes..."><?= old('descricaoPerfil') ?></textarea>
+                        <textarea class="w3-input w3-border w3-round" name="descricaoPerfil" rows="4" required placeholder="Informe seu CNPJ, escreva um resumo do seu trabalho, tempo de experiência, diferenciais e como costuma atender seus clientes..."><?= old('descricaoPerfil') ?></textarea>
                     </div>
                 </div>
 
-                <!-- Raio de Atendimento em KM -->
+                <!-- Raio de Atendimento em KM (Alterado para padrão 50) -->
                 <div class="w3-row-padding">
                     <div class="w3-col w12 w3-margin-bottom">
                         <label class="w3-text-dark-grey"><b>Raio de Atendimento (km) *</b></label>
-                        <input class="w3-input w3-border w3-round" type="number" name="raio_atendimento_km" value="<?= old('raio_atendimento_km', 15) ?>" min="1" max="500" required placeholder="Ex: 15">
+                        <input class="w3-input w3-border w3-round" type="number" name="raio_atendimento_km" value="<?= old('raio_atendimento_km', 50) ?>" min="1" max="500" required placeholder="Ex: 50">
                         <span class="w3-small w3-text-gray">Distância máxima em quilômetros que você aceita se deslocar para atender chamados.</span>
                     </div>
+                </div>
+
+                <!-- Opção de Restrição por Cidade -->
+                <div class="w3-container w3-margin-bottom">
+                    <label>
+                        <input class="w3-check" type="checkbox" name="apenas_mesma_cidade" value="1" <?= old('apenas_mesma_cidade') ? 'checked' : '' ?>>
+                        <b>Restringir atendimento apenas aos limites da minha cidade</b> (Não atender cidades vizinhas, mesmo dentro do raio em km)
+                    </label>
                 </div>
 
                 <!-- Categorias de Atuação -->
                 <div class="w3-row-padding">
                     <div class="w3-col w12 w3-margin-bottom">
                         <label class="w3-text-dark-grey"><b>Selecione suas Especialidades / Categorias *</b></label>
-                        
+
                         <!-- Campo para pesquisar categoria -->
                         <div class="w3-margin-bottom" style="margin-top: 5px;">
                             <input type="text" id="buscaCategoria" class="w3-input w3-border w3-round w3-white" placeholder="🔍 Digite o nome da categoria para buscar..." onkeyup="filtrarCategorias()">
@@ -98,7 +137,7 @@
                                 <?php foreach ($categorias as $cat) : ?>
                                     <div class="w3-margin-bottom item-categoria w3-hide">
                                         <input class="w3-check" type="checkbox" name="categorias[]" value="<?= $cat['id'] ?>" id="cat_<?= $cat['id'] ?>">
-                                        <label for="cat_<?= $cat['id'] ?>" class="w3-validate nome-categoria" style="cursor:pointer;"> 
+                                        <label for="cat_<?= $cat['id'] ?>" class="w3-validate nome-categoria" style="cursor:pointer;">
                                             <?= esc($cat['categoria']) ?>
                                         </label>
                                     </div>
@@ -131,7 +170,7 @@
         <p class="w3-small w3-text-gray">&copy; <?= date('Y') ?> GetNinjas - Todos os direitos reservados.</p>
     </footer>
 
-    <!-- Script para Filtrar Categorias em Tempo Real -->
+    <!-- Scripts de Filtro e Consulta CEP AJAX -->
     <script>
         function filtrarCategorias() {
             const input = document.getElementById('buscaCategoria').value.toLowerCase().trim();
@@ -180,6 +219,45 @@
                 msgSemResultado.style.display = "none";
             }
         }
+
+        // Formata o CEP que já vem do banco logo ao carregar a página
+        window.addEventListener('DOMContentLoaded', function() {
+            const inputCEP = document.getElementById('cep');
+            if (inputCEP && inputCEP.value) {
+                let value = inputCEP.value.replace(/\D/g, '');
+                if (value.length === 8) {
+                    inputCEP.value = value.replace(/^(\d{5})(\d{0,3})/, '$1-$2');
+                }
+            }
+        });
+
+        // Máscara e Consulta AJAX de CEP
+        const inputCEP = document.getElementById('cep');
+        inputCEP.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 8) value = value.substring(0, 8);
+
+            let valorFormatado = value;
+            if (value.length > 5) {
+                valorFormatado = value.replace(/^(\d{5})(\d{0,3})/, '$1-$2');
+            }
+            e.target.value = valorFormatado;
+
+            if (value.length === 8) {
+                fetch('<?= base_url('api/consultar-cep') ?>?cep=' + value)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && !data.erro) {
+                            document.getElementById('bairro').value = data.bairro || '';
+                            document.getElementById('cidade').value = data.cidade || '';
+                            document.getElementById('estado').value = data.estado || '';
+                        } else {
+                            alert('CEP não encontrado.');
+                        }
+                    })
+                    .catch(error => console.error('Erro ao consultar CEP:', error));
+            }
+        });
     </script>
 
 </body>

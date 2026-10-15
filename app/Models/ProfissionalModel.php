@@ -11,17 +11,22 @@ class ProfissionalModel extends Model
     protected $useAutoIncrement = false;        // Desativa auto incremento na PK
     protected $returnType       = 'array';
 
-    // Campos permitidos para atualização
+    // Campos permitidos para atualização (adicionados cep, bairro, cidade e estado)
     protected $allowedFields    = [
         'usuario_id', 
         'descricaoPerfil', 
         'raio_atendimento_km',
+        'cep',
+        'bairro',
+        'cidade',
+        'estado',
         'latitude', 
         'longitude', 
         'status', // ENUM: 'em_analise', 'ativo', 'inativo', 'pendente', 'indisponivel', 'ajustes_solicitados', 'suspenso'
         'permite_redes_sociais',
         'observacao_admin',
-        'bloqueado_ate'
+        'bloqueado_ate',
+        'apenas_mesma_cidade'
     ];
 
     protected $useTimestamps    = false;
@@ -65,7 +70,7 @@ class ProfissionalModel extends Model
      */
     public function getPendentesPaginados(int $perPage = 5, int $page = 1)
     {
-        return $this->select('profissional.*, usuario.id as usuario_id, usuario.nome, usuario.email, usuario.cidade, usuario.estado')
+        return $this->select('profissional.*, usuario.id as usuario_id, usuario.nome, usuario.email, usuario.cidade as usuario_cidade, usuario.estado as usuario_estado')
                     ->join('usuario', 'usuario.id = profissional.usuario_id')
                     ->whereIn('profissional.status', ['em_analise', 'pendente', 'ajustes_solicitados'])
                     ->paginate($perPage, 'pendentes', $page);
@@ -95,8 +100,6 @@ class ProfissionalModel extends Model
                 profissional.*, 
                 usuario.nome, 
                 usuario.email, 
-                usuario.cidade, 
-                usuario.estado,
                 usuario.status as status_usuario
             ')
             ->join('usuario', 'usuario.id = profissional.usuario_id');

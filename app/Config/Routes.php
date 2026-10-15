@@ -44,6 +44,9 @@ $routes->post('profissional/processarAtivacao', [ProfissionalController::class, 
 $routes->get('profissional/ativar-perfil', [ProfissionalController::class, 'ativarPerfil']);
 $routes->get('profissional/dashboard', [ProfissionalController::class, 'dashboard']);
 
+// Rota da API para consulta de CEP via AJAX
+$routes->get('api/consultar-cep', [ProfissionalController::class, 'consultarCepApi']);
+
 // Rotas de Perfil Profissional
 $routes->get('profissional/editar-perfil', 'ProfissionalController::editarPerfil');
 $routes->post('profissional/atualizar-perfil', 'ProfissionalController::atualizarPerfil');
@@ -64,8 +67,13 @@ $routes->group('admin', function($routes) {
     $routes->post('solicitarAjustes/(:num)', 'AdminController::solicitarAjustes/$1');
     $routes->post('profissional/solicitarAjustes/(:num)', 'AdminController::solicitarAjustes/$1');
 
-    $routes->get('suspenderProfissional/(:num)', 'AdminController::suspenderProfissional/$1');
-    $routes->get('profissional/suspender/(:num)', 'AdminController::suspenderProfissional/$1');
+    // Permite tanto GET quanto POST para a suspensão, garantindo que nada quebre
+    $routes->match(['get', 'post'], 'suspenderProfissional/(:num)', 'AdminController::suspenderProfissional/$1');
+    $routes->match(['get', 'post'], 'profissional/suspender/(:num)', 'AdminController::suspenderProfissional/$1');
+
+    // Rotas de Reativação de Profissionais
+    $routes->get('reativarProfissional/(:num)', 'AdminController::reativarProfissional/$1');
+    $routes->get('profissional/reativar/(:num)', 'AdminController::reativarProfissional/$1');
 
     // Rotas de Utilizadores
     $routes->post('suspenderUsuario/(:num)', 'AdminController::suspenderUsuario/$1');
